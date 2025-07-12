@@ -34,6 +34,7 @@ Make sure you have these installed on your computer:
 **Don't delete or move these folders** - they're needed for the template to work:
 - `.docs/` - project documentation and AI prompts
 - `.cursor/` - Cursor-specific settings
+Warning: Change this to .vscode if not using cursor.
 - `.devcontainer/` - development container configuration
 - `.tests/` - testing setup
 
