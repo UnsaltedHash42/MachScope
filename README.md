@@ -1,4 +1,4 @@
-# Cursor Project Template
+date # Cursor Project Template
 
 A simple template to help you start new projects with Cursor AI and development containers.
 
@@ -14,8 +14,9 @@ Make sure you have these installed on your computer:
 
 ### 1. Create Your Project
 1. Copy this entire folder to a new location on your computer
-2. Rename the folder to whatever you want to call your project
-3. Open the folder in Cursor or VS Code
+2. **Remove the `.git` folder** - This ensures you start with a clean git history for your new project
+3. Rename the folder to whatever you want to call your project
+4. Open the folder in Cursor or VS Code
 
 ### 2. Start the Development Environment
 1. Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac) to open the command palette
@@ -34,11 +35,14 @@ Make sure you have these installed on your computer:
 **Don't delete or move these folders** - they're needed for the template to work:
 - `.docs/` - project documentation and AI prompts
 - `.cursor/` - Cursor-specific settings
-Warning: Change this to .vscode if not using cursor.
 - `.devcontainer/` - development container configuration
 - `.tests/` - testing setup
 
 These folders are automatically hidden from version control, so you don't need to worry about them.
+
+## Important Note
+
+**If you're using Visual Studio Code instead of Cursor**: Change the `.cursor/` folder name to `.vscode/` for proper VS Code integration.
 
 ## Troubleshooting
 
