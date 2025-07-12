@@ -1,21 +1,56 @@
-# Cursor Setup Template
+# Cursor Project Template
 
-## Requirements
-- Cursor (or VSCode)
-- Devcontainer extension
-- Docker Desktop
+A simple template to help you start new projects with Cursor AI and development containers.
 
-## Usage
-1. Copy this template to a new location and rename the folder to your desired project name.
-2. Open the project folder in Cursor or VSCode.
-3. Launch command palette and rebuild container to launch into dev container.
+## Prerequisites
+
+Make sure you have these installed on your computer:
+
+- **Cursor** (or Visual Studio Code) - your code editor
+- **Dev Container extension** - adds container support to your editor
+- **Docker Desktop** - must be installed and running
+
+## Getting Started
+
+### 1. Create Your Project
+1. Copy this entire folder to a new location on your computer
+2. Rename the folder to whatever you want to call your project
+3. Open the folder in Cursor or VS Code
+
+### 2. Start the Development Environment
+1. Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac) to open the command palette
+2. Type "Dev Containers: Rebuild Container" and press Enter
+3. Wait for the setup to complete (this may take a few minutes the first time)
 
 ![Dev Container Setup](.docs/images/devcontainer.png)
 
-4. Fill out `.docs/Initial_Prompt.md` with your project requirements.
-5. Follow the AI's instructions for project setup and development.
+### 3. Tell AI About Your Project
+1. Open the file `.docs/Initial_Prompt.md`
+2. Write down what you want to build and any specific requirements
+3. The AI will help you set up and develop your project
 
-All template control files (`.docs/`, `.cursor/`, `.devcontainer/`, `.tests/`) should remain in the project root and be excluded from version control using `.gitignore`.
+## Important Information
+
+**Don't delete or move these folders** - they're needed for the template to work:
+- `.docs/` - project documentation and AI prompts
+- `.cursor/` - Cursor-specific settings
+- `.devcontainer/` - development container configuration
+- `.tests/` - testing setup
+
+These folders are automatically hidden from version control, so you don't need to worry about them.
+
+## Troubleshooting
+
+If something isn't working:
+
+1. **Docker Desktop**: Make sure it's running (and has been run at least once before)
+2. **Extensions**: Check that the Dev Container extension is installed in your editor
+3. **Container Issues**: Try rebuilding the container from the command palette
+4. **Still Stuck?**: Check the Docker Desktop logs or restart your editor
+
+---
+
+**Ready to start coding? Let's go!**
 
 
 
