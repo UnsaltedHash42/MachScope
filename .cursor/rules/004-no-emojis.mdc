@@ -1,0 +1,43 @@
+---
+description: Strict prohibition of emojis in all project content
+globs: **/*
+alwaysApply: true
+---
+
+# No Emojis Rule
+
+## Absolute Prohibition
+**NO EMOJIS ARE ALLOWED ANYWHERE IN THE PROJECT.**
+
+## What is Prohibited
+- Emoji characters in code comments
+- Emoji characters in documentation
+- Emoji characters in README files
+- Emoji characters in commit messages
+- Emoji characters in variable names
+- Emoji characters in file names
+- Emoji characters in any text content
+
+## What is Allowed
+- Icons (SVG, PNG, etc.) in UI components
+- Icons in documentation when appropriate
+- Unicode symbols that are not emojis
+- Standard punctuation and text characters
+
+## Enforcement
+1. NEVER use emoji characters in any code or documentation
+2. If tempted to use an emoji, use plain text or an icon instead
+3. Review all generated content to ensure no emojis are present
+4. This rule applies to all project files and content
+
+## Examples
+**Forbidden:**
+- `// 🚀 Launch the rocket!`
+- `const 🎉 = "celebration"`
+- `# 🎯 Target achieved`
+
+**Allowed:**
+- `// Launch the rocket!`
+- `const celebration = "celebration"`
+- `# Target achieved`
+- `<Icon name="rocket" />` (UI icon component)
