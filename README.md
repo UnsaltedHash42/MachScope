@@ -1,4 +1,4 @@
-date # Cursor Project Template
+# Cursor Project Template
 
 A simple template to help you start new projects with Cursor AI and development containers.
 
@@ -55,7 +55,7 @@ If something isn't working:
 
 ---
 
-**Ready to start coding? Let's go!**
+
 
 
 
