@@ -1,0 +1,57 @@
+/* Remove this comment and add your MCP servers here to use them in the Agent chat. Also remove the comment ending with from the bottom of the file.
+This is an example usage file for MCP servers.
+
+{
+    "mcpServers": {
+        "context7": {
+          "command": "docker",
+          "args": [
+                "run",
+                "-i",
+                "--rm",
+                "mcp/context7"
+            ]
+        },
+        "exa": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-e",
+                "EXA_API_KEY",
+                "mcp/exa"
+            ],
+            "env": {
+                "EXA_API_KEY": "your-api-key-here"
+            }
+        },
+            "filesystem": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-v",
+                "/local-directory:/local-directory",
+                "mcp/filesystem",
+                "/local-directory"
+            ]
+        },
+        "github-official": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-e",
+                "GITHUB_PERSONAL_ACCESS_TOKEN",
+                "ghcr.io/github/github-mcp-server"
+            ],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
+            }
+        }
+    }
+}
+*/
