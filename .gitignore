@@ -1,5 +1,6 @@
 # Cursor/Editor environment
 .cursor/
+.devcontainer/
 .vscode/
 .idea/
 .history/

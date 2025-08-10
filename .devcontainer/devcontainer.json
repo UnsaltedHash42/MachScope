@@ -1,5 +1,5 @@
 {
-	"name": "Development Container",
+	"name": "MachScope Documentation Container",
 	"image": "mcr.microsoft.com/devcontainers/base:jammy",
 	
 	"features": {
@@ -8,5 +8,23 @@
 	},
 
 	"remoteUser": "vscode",
-		
+	
+	"postCreateCommand": "echo '⚠️  Note: This container is for documentation and project management only. Building and running MachScope requires macOS with Security.framework. Use your Mac host system for development.'",
+	
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "bash",
+				"files.associations": {
+					"*.md": "markdown",
+					"*.yml": "yaml"
+				}
+			},
+			"extensions": [
+				"yzhang.markdown-all-in-one",
+				"davidanson.vscode-markdownlint",
+				"redhat.vscode-yaml"
+			]
+		}
+	}
 }

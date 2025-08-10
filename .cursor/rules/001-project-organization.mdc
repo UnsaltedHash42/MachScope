@@ -1,8 +1,28 @@
+---
+description: Project documentation guidelines and organization
+globs: ["**/*"]
+alwaysApply: true
+---
 
 # Project Documentation Guidelines
 
+## Design Document
+Path: `.docs/Design.md`
+
+### Usage
+- Serves as the authoritative source of the application design
+- Refer to this document for architectural decisions and component specifications
+- Use as reference when implementing features to ensure adherence to the design
+
+### Reference Rules
+1. ALWAYS CONSULT the design document before implementing any feature
+2. UNDER NO CIRCUMSTANCE will you modify the Design.md unless the user explicitly asks you to modify the Design.md
+3. ALIGN implementation with the specifications in the design document
+4. NOTE any deviations from the design in the Notes.md file with clear rationale
+5. PRESERVE design decisions by referencing the document section in code comments
+
 ## Notes File
-Path: `.docs/notes.md`
+Path: `.docs/Notes.md`
 
 ### Usage
 - Tracks important aspects of the project design and development decisions
@@ -29,39 +49,27 @@ Path: `.docs/notes.md`
 - Note any deviations from the initial design document and their rationale
 
 ### Format
-- New Decision: " ecision to [DECISION] because [RATIONALE]."
+- New Decision: "Decision to [DECISION] because [RATIONALE]."
 - New Challenge: "**Challenge**: [DESCRIPTION]\n**Solution**: [SOLUTION]\n**Impact**: [IMPACT]"
 - New Todo: "[ ] [DESCRIPTION] - [PRIORITY: High/Medium/Low] [ESTIMATION]"
 - Completed Todo: "[x] [DESCRIPTION] - Implemented in [FILE/COMPONENT]"
-
-## Design Document
-Path: `.docs/Design.md`
-
-### Usage
-- Serves as the authoritative source of the application design
-- Refer to this document for architectural decisions and component specifications
-- Use as reference when implementing features to ensure adherence to the design
-
-### Reference Rules
-1. CONSULT the design document before implementing any feature
-2. UNDER NO CIRCUMSTANCE will you modify the Design.md unless the user explicitly asks you to modify the Design.md.
-3. ALIGN implementation with the specifications in the design document
-4. NOTE any deviations from the design in the notes.md file with clear rationale
-5. PRESERVE design decisions by referencing the document section in code comments
 
 ## Conventions
 Path: `.docs/conventions/`
 
 ### Usage
-- for each document in the directory read an understand the coding conventions for the framework it pretains to.
-- use these files to help understand how the user wants the framework to be used and any special organization and usage details for the framework
+- For each document in the directory, read and understand the coding conventions for the framework it pertains to
+- Use these files to help understand how the user wants the framework to be used and any special organization and usage details for the framework
+- The swift-conventions.md file contains Swift-specific patterns including Objective-C bridging guidelines
 
 ### Update Rules
 - Update conventions when new frameworks or patterns are introduced
 - Maintain consistency across all project files
 - Document any deviations from established conventions
 
-- for each document in the directory read an understand the coding conventions for the framework it pretains to.
-- use these files to help understand how the user wants the framework to be used and any special organization and usage details for the framework
-
-### Update
+## Technology Stack (from Design.md)
+- **Primary Language**: Swift 5.10+
+- **Objective-C Bridges**: Use for C/CoreFoundation APIs (Security.framework)
+- **Build System**: Swift Package Manager
+- **Target Platform**: macOS 13+ only
+- **Key Frameworks**: Security.framework (requires Objective-C bridging)
