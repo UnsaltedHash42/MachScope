@@ -6,6 +6,23 @@ public enum BinaryKind: String {
 
 public struct MachOMagic {
     public init() {}
+    public func isMachO(_ url: URL) -> Bool {
+        do {
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            guard let data = try handle.read(upToCount: 4), data.count == 4 else { return false }
+            let magic = data.withUnsafeBytes { $0.load(as: UInt32.self) }
+            let mh_magic: UInt32 = 0xfeedface
+            let mh_cigam: UInt32 = 0xcefaedfe
+            let mh_magic_64: UInt32 = 0xfeedfacf
+            let mh_cigam_64: UInt32 = 0xcffaedfe
+            let fat_magic: UInt32 = 0xcafebabe
+            let fat_cigam: UInt32 = 0xbebafeca
+            return magic == mh_magic || magic == mh_cigam || magic == mh_magic_64 || magic == mh_cigam_64 || magic == fat_magic || magic == fat_cigam
+        } catch {
+            return false
+        }
+    }
     public func detect(at url: URL) -> BinaryKind {
         let path = url.path
         if path.hasSuffix(".dylib") { return .dylib }

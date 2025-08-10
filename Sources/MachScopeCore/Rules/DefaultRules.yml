@@ -1,3 +1,22 @@
-# Default rules (placeholder)
-
-
+# Default rules
+- entitlement: com.apple.security.cs.disable-library-validation
+  severity: high
+  reason: Disable Library Validation allows dylib injection
+- entitlement: com.apple.security.cs.allow-dyld-environment-variables
+  severity: high
+  reason: Allows manipulation via DYLD_* environment variables
+- entitlement: com.apple.security.cs.allow-unsigned-executable-memory
+  severity: high
+  reason: Allows creation of unsigned executable memory (code injection risk)
+- entitlement: com.apple.security.cs.allow-jit
+  severity: high
+  reason: JIT execution enabled
+- entitlement: com.apple.security.get-task-allow
+  severity: critical
+  reason: Debugger attachment permitted in production context
+- entitlement: com.apple.security.network.client
+  severity: low
+  reason: Has network client entitlement
+- entitlement: com.apple.security.network.server
+  severity: low
+  reason: Has network server entitlement

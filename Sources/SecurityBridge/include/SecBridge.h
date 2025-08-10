@@ -14,6 +14,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// operation: "execute" or "install". Any other value results in no-op (returns NULL and sets errSecParam).
 + (CFDictionaryRef _Nullable)copyAssessmentForPath:(NSString *)path operation:(NSString * _Nullable)operation error:(OSStatus *_Nullable)errorCode;
 
+/// Returns an NSArray of NSDictionary entries with keys: subject (NSString), sha256 (NSString). Nil on error.
++ (NSArray * _Nullable)copyCertificateSummariesForPath:(NSString *)path error:(OSStatus *_Nullable)errorCode;
+
 @end
 
 NS_ASSUME_NONNULL_END

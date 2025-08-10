@@ -5,7 +5,7 @@
 .idea/
 .history/
 .docs/
-
+reports/
 # macOS
 .DS_Store
 

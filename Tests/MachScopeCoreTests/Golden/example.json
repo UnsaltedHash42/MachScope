@@ -1,0 +1,16 @@
+[
+  {
+    "path": "/usr/bin/ls",
+    "bundle_id": "",
+    "binary_type": "exec",
+    "arch": [],
+    "team_id": "",
+    "signing_authorities": [],
+    "hardened_runtime": false,
+    "signature_flags": [],
+    "notarization": "",
+    "entitlements": {},
+    "findings": [],
+    "errors": []
+  }
+]

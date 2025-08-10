@@ -16,7 +16,8 @@ let package = Package(
             path: "Sources/SecurityBridge",
             publicHeadersPath: "include",
             linkerSettings: [
-                .linkedFramework("Security")
+                .linkedFramework("Security"),
+                .linkedLibrary("CommonCrypto", .when(platforms: [.macOS]))
             ]
         ),
         .target(
@@ -38,7 +39,11 @@ let package = Package(
         .testTarget(
             name: "MachScopeCoreTests",
             dependencies: ["MachScopeCore"],
-            path: "Tests/MachScopeCoreTests"
+            path: "Tests/MachScopeCoreTests",
+            resources: [
+                .process("Golden"),
+                .process("Fixtures")
+            ]
         )
     ]
 )

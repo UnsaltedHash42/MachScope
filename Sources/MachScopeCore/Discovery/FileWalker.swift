@@ -43,11 +43,11 @@ public struct FileWalker {
                 return
             }
 
-            guard let e = fm.enumerator(at: url, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey], options: [.skipsHiddenFiles], errorHandler: nil) else { return }
+            guard let e = fm.enumerator(at: url, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .isRegularFileKey], options: [.skipsHiddenFiles], errorHandler: nil) else { return }
             for case let child as URL in e {
                 let childPath = child.path
                 if isExcluded(childPath) { e.skipDescendants(); continue }
-                if let vals = try? child.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey]) {
+                if let vals = try? child.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey, .isRegularFileKey]) {
                     if vals.isSymbolicLink == true && !options.followSymlinks {
                         e.skipDescendants();
                         continue
@@ -59,7 +59,10 @@ public struct FileWalker {
                             continue
                         }
                     } else {
-                        results.append(child)
+                        // Only include probable Mach-O regular files
+                        if vals.isRegularFile == true && MachOMagic().isMachO(child) {
+                            results.append(child)
+                        }
                     }
                 }
             }
