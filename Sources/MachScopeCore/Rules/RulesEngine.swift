@@ -13,7 +13,7 @@ public struct RulesEngine {
         self.yamlRules = yamlRules
     }
 
-    public func evaluate(entitlements: [String: Bool], flags: [String], notarization: String?) -> [Finding] {
+    public func evaluate(entitlements: [String: Bool], flags: [String], notarization: String?, hardenedRuntime: Bool? = nil, hasQuarantine: Bool? = nil) -> [Finding] {
         var findings: [Finding] = []
 
         func add(_ id: String, _ severity: Finding.Severity, _ reason: String) {
@@ -43,9 +43,16 @@ public struct RulesEngine {
             }
         }
 
-        // Hardened Runtime missing (only if we have any flags to judge)
-        if !flags.isEmpty && !flags.contains("runtime") {
+        // Hardened Runtime missing (prefer explicit hardenedRuntime flag; otherwise infer from signature flags)
+        if let hr = hardenedRuntime {
+            if hr == false { add("NO_HARDENED_RUNTIME", .medium, "Hardened Runtime not enabled") }
+        } else if !flags.isEmpty && !flags.contains("runtime") {
             add("NO_HARDENED_RUNTIME", .medium, "Hardened Runtime not enabled")
+        }
+
+        // Adhoc signing
+        if flags.contains("adhoc") {
+            add("ADHOC_SIGNING", .medium, "Adhoc signature (no trusted signer)")
         }
 
         // Combination: allow-jit and network usage (approximate by presence of client entitlement if present)
@@ -56,6 +63,11 @@ public struct RulesEngine {
             }
         }
 
+        // Combination: get-task-allow with hardened runtime disabled -> critical
+        if entitlements["com.apple.security.get-task-allow"] == true && !(flags.contains("runtime")) {
+            add("GTA_NO_HARDENED", .critical, "Debugger allowed without Hardened Runtime")
+        }
+
         // Quarantine attribute present
         if entitlements.isEmpty { /* noop */ }
 
@@ -63,6 +75,11 @@ public struct RulesEngine {
         // Notarization
         if let n = notarization?.lowercased(), n == "rejected" {
             add("NOTARIZATION_REJECTED", .high, "Gatekeeper assessment was rejected")
+        }
+
+        // Quarantine attribute present -> informational
+        if hasQuarantine == true {
+            add("QUARANTINE_PRESENT", .low, "Quarantine extended attribute present")
         }
 
         return findings

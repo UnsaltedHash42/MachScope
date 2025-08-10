@@ -1,4 +1,6 @@
 #import "include/SecBridge.h"
+// Avoid CommonCrypto linker dependency by using SecCertificateCopyNormalizedSubjectSequence
+#include <Security/SecCertificate.h>
 
 @implementation SecBridge
 
@@ -67,13 +69,17 @@
             SecCertificateRef cert = (SecCertificateRef)CFArrayGetValueAtIndex(certs, i);
             if (!cert) continue;
             CFStringRef subject = SecCertificateCopySubjectSummary(cert);
-            // SHA-256
-            CFDataRef data = SecCertificateCopyData(cert);
-            unsigned char hash[CC_SHA256_DIGEST_LENGTH];
-            CC_SHA256(CFDataGetBytePtr(data), (CC_LONG)CFDataGetLength(data), hash);
-            CFRelease(data);
-            NSMutableString *hex = [NSMutableString stringWithCapacity:CC_SHA256_DIGEST_LENGTH * 2];
-            for (int j=0;j<CC_SHA256_DIGEST_LENGTH;j++){ [hex appendFormat:@"%02x", hash[j]]; }
+            // Normalized subject sequence (DER) as a stable identifier (not SHA-256 digest)
+            CFDataRef norm = SecCertificateCopyNormalizedSubjectSequence(cert);
+            NSMutableString *hex = [NSMutableString string];
+            if (norm) {
+                const UInt8 *bytes = CFDataGetBytePtr(norm);
+                CFIndex len = CFDataGetLength(norm);
+                for (CFIndex j=0; j<len && j<64; j++) { // limit length
+                    [hex appendFormat:@"%02x", bytes[j]];
+                }
+                CFRelease(norm);
+            }
             [summaries addObject:@{ @"subject": (__bridge_transfer NSString *)subject ?: @"",
                                     @"sha256": hex }];
         }

@@ -62,15 +62,14 @@ public struct SignInfoExtractor {
 
         let archs: [String] = MachOMagic().detectArchitectures(at: url)
 
-        let notarization = Assessment().assessNotarizationString(at: url, enabled: assessmentEnabled)
-        let engine = self.rulesEngine ?? RulesEngine.loadDefault()
-        let findings = engine.evaluate(entitlements: entitlements.values, flags: flags.flags, notarization: notarization)
-
         // Quarantine xattr
         let quarantine = hasQuarantineAttribute(atPath: url.path)
 
         // Sandbox: infer from entitlements
         let sandboxed = entitlements.values["com.apple.security.app-sandbox"].map { $0 }
+        let notarization = Assessment().assessNotarizationString(at: url, enabled: assessmentEnabled)
+        let engine = self.rulesEngine ?? RulesEngine.loadDefault()
+        let findings = engine.evaluate(entitlements: entitlements.values, flags: flags.flags, notarization: notarization, hardenedRuntime: flags.hardenedRuntime, hasQuarantine: quarantine)
 
         // Developer type from authorities
         let developerType = authorities.first.map { auth in

@@ -11,6 +11,7 @@ struct CLIConfig {
     var concurrency: Int = 8
     var verbose: Bool = false
     var assessment: Bool = false
+    var bundleMainsOnly: Bool = false
 }
 
 func printUsage() {
@@ -35,6 +36,7 @@ func parseFlags(_ args: inout ArraySlice<String>, into config: inout CLIConfig) 
         case "--concurrency": if let v = args.first, let n = Int(v) { config.concurrency = n; _ = args.removeFirst() }
         case "--verbose": config.verbose = true
         case "--assessment": config.assessment = true
+        case "--bundle-mains-only": config.bundleMainsOnly = true
         default: break
         }
     }
@@ -81,7 +83,7 @@ case "scan":
     var config = CLIConfig()
     parseFlags(&args, into: &config)
     let root = URL(fileURLWithPath: path)
-    let files = FileWalker().enumeratePaths(options: .init(root: root, excludes: config.exclude, maxDepth: config.maxDepth, followSymlinks: config.followSymlinks))
+    let files = FileWalker().enumeratePaths(options: .init(root: root, excludes: config.exclude, maxDepth: config.maxDepth, followSymlinks: config.followSymlinks, bundleMainsOnly: config.bundleMainsOnly))
     let rulesEngine = config.rulesPath.flatMap { RulesEngine.load(fromFilePath: $0) } ?? RulesEngine.loadDefault()
     if config.verbose {
         fputs("Found \(files.count) files. Scanning with concurrency=\(config.concurrency)...\n", stderr)

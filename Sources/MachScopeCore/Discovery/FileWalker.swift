@@ -6,12 +6,14 @@ public struct FileWalker {
         public let excludes: [String]
         public let maxDepth: Int
         public let followSymlinks: Bool
+        public let bundleMainsOnly: Bool
 
-        public init(root: URL, excludes: [String] = [], maxDepth: Int = .max, followSymlinks: Bool = false) {
+        public init(root: URL, excludes: [String] = [], maxDepth: Int = .max, followSymlinks: Bool = false, bundleMainsOnly: Bool = false) {
             self.root = root
             self.excludes = excludes
             self.maxDepth = maxDepth
             self.followSymlinks = followSymlinks
+            self.bundleMainsOnly = bundleMainsOnly
         }
     }
 
@@ -43,6 +45,14 @@ public struct FileWalker {
                 return
             }
 
+            // If scanning bundle mains only and current is an .app bundle, add its main executable and skip descending
+            if options.bundleMainsOnly, url.pathExtension.lowercased() == "app" {
+                if let mainExec = mainExecutable(inAppBundle: url) {
+                    results.append(mainExec)
+                }
+                return
+            }
+
             guard let e = fm.enumerator(at: url, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .isRegularFileKey], options: [.skipsHiddenFiles], errorHandler: nil) else { return }
             for case let child as URL in e {
                 let childPath = child.path
@@ -53,6 +63,13 @@ public struct FileWalker {
                         continue
                     }
                     if vals.isDirectory == true {
+                        if options.bundleMainsOnly, child.pathExtension.lowercased() == "app" {
+                            if let mainExec = mainExecutable(inAppBundle: child) {
+                                results.append(mainExec)
+                            }
+                            e.skipDescendants();
+                            continue
+                        }
                         let relDepth = child.pathComponents.count - url.pathComponents.count
                         if relDepth > options.maxDepth {
                             e.skipDescendants();
@@ -70,6 +87,14 @@ public struct FileWalker {
 
         walk(options.root, depth: 0)
         return results
+    }
+
+    private func mainExecutable(inAppBundle appURL: URL) -> URL? {
+        let plistURL = appURL.appendingPathComponent("Contents/Info.plist")
+        guard let dict = NSDictionary(contentsOf: plistURL) as? [String: Any],
+              let execName = dict["CFBundleExecutable"] as? String else { return nil }
+        let execURL = appURL.appendingPathComponent("Contents/MacOS/").appendingPathComponent(execName)
+        return FileManager.default.fileExists(atPath: execURL.path) ? execURL : nil
     }
 }
 

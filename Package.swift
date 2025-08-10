@@ -16,8 +16,7 @@ let package = Package(
             path: "Sources/SecurityBridge",
             publicHeadersPath: "include",
             linkerSettings: [
-                .linkedFramework("Security"),
-                .linkedLibrary("CommonCrypto", .when(platforms: [.macOS]))
+                .linkedFramework("Security")
             ]
         ),
         .target(

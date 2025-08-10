@@ -20,3 +20,37 @@
 - entitlement: com.apple.security.network.server
   severity: low
   reason: Has network server entitlement
+# Sandbox capability entitlements of interest
+- entitlement: com.apple.security.automation.apple-events
+  severity: medium
+  reason: Can control other apps via Apple Events (automation)
+- entitlement: com.apple.security.device.camera
+  severity: medium
+  reason: Access to camera device
+- entitlement: com.apple.security.device.microphone
+  severity: medium
+  reason: Access to microphone device
+- entitlement: com.apple.security.personal-information.addressbook
+  severity: medium
+  reason: Access to contacts/address book
+- entitlement: com.apple.security.personal-information.calendars
+  severity: medium
+  reason: Access to calendars
+- entitlement: com.apple.security.personal-information.location
+  severity: medium
+  reason: Access to location information
+- entitlement: com.apple.security.personal-information.photos-library
+  severity: medium
+  reason: Access to Photos library
+- entitlement: com.apple.security.files.user-selected.read-write
+  severity: low
+  reason: User-selected read/write file access
+- entitlement: com.apple.security.print
+  severity: low
+  reason: Printing capability enabled
+- entitlement: com.apple.security.files.all
+  severity: high
+  reason: Full file system access via sandbox exception
+- entitlement: com.apple.security.files.downloads.read-write
+  severity: medium
+  reason: Read/Write access to Downloads folder

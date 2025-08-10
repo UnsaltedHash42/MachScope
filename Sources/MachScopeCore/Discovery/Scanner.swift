@@ -17,7 +17,9 @@ public final class Scanner {
         for url in urls {
             queue.addOperation { [weak self] in
                 guard let self = self else { return }
-                let record = self.extractor.buildRecord(for: url, assessmentEnabled: assessmentEnabled)
+                let record = autoreleasepool(invoking: { () -> Record in
+                    return self.extractor.buildRecord(for: url, assessmentEnabled: assessmentEnabled)
+                })
                 lock.lock()
                 records.append(record)
                 lock.unlock()
