@@ -30,7 +30,7 @@
 ## Phase 3: Core Functionality
 | ID | Description | Dependencies | Status | Priority | Estimation | Notes |
 |----|-------------|--------------|--------|----------|------------|-------|
-| 3.1 | Implement `FileWalker` (recursive traversal with filters) | 1.3 | Pending | High | 2h | Concurrency-aware traversal |
+| 3.1 | Implement `FileWalker` (recursive traversal with filters) | 1.3 | In Progress | High | 2h | Concurrency-aware traversal |
 | 3.2 | Implement `MachOMagic` (magic number/arch detection) | 1.3 | Pending | High | 1.5h | Support FAT/Universal |
 | 3.3 | Implement `BundleIntrospector` (Info.plist parsing) | 1.3 | Pending | High | 1h | Extract CFBundleIdentifier |
 | 3.4 | Implement `Entitlements` parsing from signing info | 2.3 | Pending | High | 1.5h | Map to Swift types |
@@ -41,15 +41,15 @@
 ## Phase 4: Reporting & CLI
 | ID | Description | Dependencies | Status | Priority | Estimation | Notes |
 |----|-------------|--------------|--------|----------|------------|-------|
-| 4.1 | Implement `JSONWriter` | 3.x | Pending | High | 1h | One record per target |
-| 4.2 | Implement `HTMLReport` (single-file with embedded assets) | 3.x | Pending | High | 2h | Sort/filter client-side |
-| 4.3 | Wire CLI options (`--format`, `--out`, `--rules`, `--exclude`, `--max-depth`, `--follow-symlinks`, `--concurrency`, `--verbose`) | 1.4,3.x,4.1,4.2 | Pending | High | 2h | Defaults per design |
+| 4.1 | Implement `JSONWriter` | 3.x | Complete | High | 1h | One record per target |
+| 4.2 | Implement `HTMLReport` (single-file with embedded assets) | 3.x | In Progress | High | 2h | Sort/filter client-side |
+| 4.3 | Wire CLI options (`--format`, `--out`, `--rules`, `--exclude`, `--max-depth`, `--follow-symlinks`, `--concurrency`, `--verbose`) | 1.4,3.x,4.1,4.2 | In Progress | High | 2h | Defaults per design |
 
 ## Phase 5: Testing
 | ID | Description | Dependencies | Status | Priority | Estimation | Notes |
 |----|-------------|--------------|--------|----------|------------|-------|
-| T1 | Unit: Entitlements parser | 2.3,3.4 | Pending | High | 1h | Cover edge cases |
-| T2 | Unit: Flag mapping | 2.3,3.5 | Pending | High | 1h | Map kSecCodeInfoFlags |
+| T1 | Unit: Entitlements parser | 2.3,3.4 | Complete | High | 1h | Cover edge cases |
+| T2 | Unit: Flag mapping | 2.3,3.5 | Complete | High | 1h | Map kSecCodeInfoFlags |
 | T3 | Unit: Rules engine (single+combo) | 3.7 | Pending | High | 1.5h | Deterministic IDs/severity |
 | T4 | Integration: E2E scan of fixtures | 3.x,4.x | Pending | High | 2h | Use sample signed apps |
 | T5 | Golden output tests | 4.1,4.2 | Pending | Medium | 1h | JSON/HTML snapshots |

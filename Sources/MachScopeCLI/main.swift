@@ -45,13 +45,38 @@ _ = args.removeFirst()
 switch sub {
 case "quick":
     guard let path = args.first else { printUsage(); exit(1) }
-    print("[stub] Quick scan of \(path). HTML report will be generated in current directory.")
+    var config = CLIConfig()
+    config.format = "html"
+    let root = URL(fileURLWithPath: path)
+    let files = FileWalker().enumeratePaths(options: .init(root: root, excludes: ["/System", "/Library"], maxDepth: 8, followSymlinks: false))
+    let extractor = SignInfoExtractor()
+    let records = files.map { extractor.buildRecord(for: $0) }
+    let html = HTMLReport().render(records: records)
+    print(html)
 case "scan":
     guard let path = args.first else { printUsage(); exit(1) }
     _ = args.removeFirst()
     var config = CLIConfig()
     parseFlags(&args, into: &config)
-    print("[stub] Scan path=\(path) format=\(config.format) out=\(config.outDir ?? ".") rules=\(config.rulesPath ?? "default") exclude=\(config.exclude) maxDepth=\(config.maxDepth) followSymlinks=\(config.followSymlinks) concurrency=\(config.concurrency) verbose=\(config.verbose)")
+    let root = URL(fileURLWithPath: path)
+    let files = FileWalker().enumeratePaths(options: .init(root: root, excludes: config.exclude, maxDepth: config.maxDepth, followSymlinks: config.followSymlinks))
+    let extractor = SignInfoExtractor()
+    let records = files.map { extractor.buildRecord(for: $0) }
+    switch config.format {
+    case "json":
+        let data = try JSONWriter().write(records: records)
+        FileHandle.standardOutput.write(data)
+    case "html":
+        let html = HTMLReport().render(records: records)
+        print(html)
+    default:
+        // both
+        let data = try JSONWriter().write(records: records)
+        print(String(data: data, encoding: .utf8) ?? "{}")
+        let html = HTMLReport().render(records: records)
+        print("\n\n--- HTML ---\n\n")
+        print(html)
+    }
 default:
     printUsage(); exit(1)
 }

@@ -24,6 +24,14 @@ public struct Assessment {
         }
         return .unknown
     }
+
+    public func assessNotarizationString(at url: URL) -> String? {
+        switch assessExecution(at: url) {
+        case .accepted: return "accepted"
+        case .rejected: return "rejected"
+        case .unknown: return nil
+        }
+    }
 }
 
 
