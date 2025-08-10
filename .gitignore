@@ -1,0 +1,24 @@
+# Cursor/Editor environment
+.cursor/
+.vscode/
+.idea/
+.history/
+
+# macOS
+.DS_Store
+
+# SwiftPM
+.build/
+.swiftpm/
+
+# Xcode (if generated locally)
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+
+# Logs/Temp
+*.log
+.env
+.cache/
+
+
