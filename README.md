@@ -1,74 +1,200 @@
-# Cursor Project Template
+# MachScope
 
-A simple template to help you start new projects with Cursor AI and development containers.
+A high-performance macOS security scanner that audits Mach-O binaries and app bundles for potentially dangerous entitlements and configurations.
 
-## Prerequisites
+## Features
 
-Make sure you have these installed on your computer:
+- **Native Security Framework Integration**: Direct use of Apple's Security.framework APIs for maximum performance
+- **Comprehensive Analysis**: Extracts entitlements, Team ID, signature flags, certificate chains, and notarization status
+- **Security Risk Assessment**: Built-in rules engine identifies dangerous entitlement combinations
+- **Multiple Output Formats**: JSON for automation, self-contained HTML for reporting
+- **High Performance**: Concurrent scanning with configurable worker pools
+- **Zero Dependencies**: No external tools required (no codesign/spctl subprocesses)
 
-- **Cursor** (or Visual Studio Code) - your code editor
-- **Dev Container extension** - adds container support to your editor
-- **Docker Desktop** - must be installed and running
+## Installation
 
-## Getting Started
+### Prerequisites
 
-### 1. Create Your Project
-1. Copy this entire folder to a new location on your computer
-2. Rename the folder to whatever you want to call your project
-3. Open the folder in Cursor or VS Code
+- macOS 13.0 (Ventura) or later
+- Xcode Command Line Tools or Xcode 15+
 
-### 2. Start the Development Environment
-1. Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac) to open the command palette
-2. Type "Dev Containers: Rebuild Container" and press Enter
-3. Wait for the setup to complete (this may take a few minutes the first time)
+### Building from Source
 
-![Dev Container Setup](.docs/images/devcontainer.png)
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/MachScope.git
+cd MachScope
 
-### 3. Tell AI About Your Project
-1. Open the file `.docs/Initial_Prompt.md`
-2. Write down what you want to build and any specific requirements
-3. The AI will help you set up and develop your project 
-4. Ask the Agent chat to read the project folder and ask any clarifying questions or design implementations to get started
-5. Follow the prompts
+# Build the release version
+make release
 
-## Important Information
+# Install to /usr/local/bin (requires sudo)
+make install
+```
 
-## MCP Usage
+### Homebrew (Coming Soon)
 
-- If you want to use MCP's (the MCP servers must live in docker desktop)
+```bash
+brew tap yourusername/machscope
+brew install machscope
+```
 
-![Docker Desktop MCP Setup](.docs/images/DDmcps.png)
+## Quick Start
 
-- Add the docker version MCP client into the .cursor/mcp.json file
+```bash
+# Quick scan of /Applications with HTML report
+machscope quick /Applications
 
-![Docker Desktop MCP Client Setup](.docs/images/DDclientmcp.png)
+# JSON output for automation
+machscope quick /Applications --json > report.json
 
+# Detailed scan with custom options
+machscope scan /Applications \
+  --format both \
+  --output ./reports \
+  --exclude "/System,/Library" \
+  --concurrency 8
+```
 
+## Usage
 
-**Don't delete or move these folders** - they're needed for the template to work:
-- `.docs/` - project documentation and AI prompts
-- `.cursor/` - Cursor-specific settings
-- `.devcontainer/` - development container configuration
-- `.tests/` - testing setup
+### Commands
 
-These folders are automatically hidden from version control, so you don't need to worry about them.
+#### `machscope quick [PATH]`
+Performs a quick scan with default settings.
 
-## Important Note
+Options:
+- `--json, -j`: Output JSON instead of HTML
 
-**If you're using Visual Studio Code instead of Cursor**: Change the `.cursor/` folder name to `.vscode/` for proper VS Code integration.
+#### `machscope scan PATH`
+Performs a detailed scan with customizable options.
 
-## Troubleshooting
+Options:
+- `--format, -f`: Output format (html, json, or both)
+- `--output, -o`: Output directory
+- `--rules`: Custom rules file (YAML)
+- `--exclude`: Comma-separated paths to exclude
+- `--max-depth`: Maximum directory traversal depth
+- `--follow-symlinks`: Follow symbolic links
+- `--concurrency, -c`: Number of concurrent workers
+- `--verbose, -v`: Enable verbose output
 
-If something isn't working:
+## Security Findings
 
-1. **Docker Desktop**: Make sure it's running (and has been run at least once before)
-2. **Extensions**: Check that the Dev Container extension is installed in your editor
-3. **Container Issues**: Try rebuilding the container from the command palette
-4. **Still Stuck?**: Check the Docker Desktop logs or restart your editor
+MachScope identifies various security-relevant configurations:
 
----
+### Critical Severity
+- **Get Task Allow**: Allows debugger attachment in production builds
+- **Multiple Disabled Protections**: Combination of weakened security boundaries
 
+### High Severity
+- **Disabled Library Validation**: Can load unsigned libraries
+- **DYLD Environment Variables**: Accepts dynamic linker manipulation
+- **JIT Compilation**: Can execute dynamically generated code
+- **Unsigned Executable Memory**: Can create executable memory without signing
 
+### Medium Severity
+- **Missing Hardened Runtime**: Not compiled with runtime protections
+- **Not Notarized**: Binary hasn't been notarized by Apple
 
+## Output Formats
 
+### JSON Format
+Machine-readable format suitable for automation and SIEM ingestion:
 
+```json
+{
+  "path": "/Applications/Example.app/Contents/MacOS/Example",
+  "bundle_id": "com.example.app",
+  "team_id": "ABC123",
+  "hardened_runtime": true,
+  "entitlements": {
+    "com.apple.security.cs.allow-jit": true
+  },
+  "findings": [
+    {
+      "id": "ALLOW-JIT",
+      "severity": "high",
+      "reason": "Enables just-in-time compilation"
+    }
+  ]
+}
+```
+
+### HTML Report
+Self-contained HTML file with:
+- Sortable and filterable results
+- Severity badges and color coding
+- Grouping by Team ID and Bundle ID
+- Search functionality
+- No external dependencies
+
+## Development
+
+### Project Structure
+```
+MachScope/
+├── Sources/
+│   ├── MachScopeCLI/        # Command-line interface
+│   └── MachScopeCore/       # Core scanning library
+├── Tests/                   # Unit and integration tests
+├── Package.swift            # Swift Package Manager config
+└── Makefile                 # Build automation
+```
+
+### Building and Testing
+```bash
+# Build debug version
+make build
+
+# Run tests
+make test
+
+# Run tests with coverage
+make test-coverage
+
+# Format code (requires swift-format)
+make format
+
+# Lint code (requires SwiftLint)
+make lint
+```
+
+### Contributing
+Please read the development documentation in `.docs/` for guidelines on:
+- Code conventions (`.docs/conventions/swift-conventions.md`)
+- Task tracking (`.docs/Task_List.md`)
+- Design decisions (`.docs/Design.md`)
+
+## Performance
+
+Typical performance on Apple Silicon Macs:
+- `/Applications` directory: < 2 minutes
+- Memory usage: < 500MB
+- Concurrent workers: 8 (configurable)
+
+## Security & Privacy
+
+- **Read-only operations**: Never modifies or executes scanned binaries
+- **Local-only**: No network connections or data collection
+- **No telemetry**: Your scan results stay on your machine
+
+## Limitations
+
+- Requires macOS 13+ (Security.framework APIs)
+- Cannot scan System Integrity Protection (SIP) protected files without Full Disk Access
+- Some entitlements may require additional privileges to read
+
+## License
+
+[License information to be added]
+
+## Acknowledgments
+
+- Inspired by tools like [Taccy](https://github.com/objective-see/Taccy) and [WhatsYourSign](https://github.com/objective-see/WhatsYourSign)
+- Built with Apple's Security.framework
+- Uses Swift Argument Parser for CLI
+
+## Support
+
+For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/yourusername/MachScope).
