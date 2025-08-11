@@ -185,16 +185,3 @@ Typical performance on Apple Silicon Macs:
 - Cannot scan System Integrity Protection (SIP) protected files without Full Disk Access
 - Some entitlements may require additional privileges to read
 
-## License
-
-[License information to be added]
-
-## Acknowledgments
-
-- Inspired by tools like [Taccy](https://github.com/objective-see/Taccy) and [WhatsYourSign](https://github.com/objective-see/WhatsYourSign)
-- Built with Apple's Security.framework
-- Uses Swift Argument Parser for CLI
-
-## Support
-
-For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/yourusername/MachScope).
