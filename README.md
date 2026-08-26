@@ -1,187 +1,168 @@
 # MachScope
 
-A high-performance macOS security scanner that audits Mach-O binaries and app bundles for potentially dangerous entitlements and configurations.
+MachScope is a macOS command-line tool that audits Mach-O binaries and app bundles for dangerous entitlements and code-signing settings. It reads Security.framework directly and does not run `codesign` or `spctl`.
 
-## Features
+MachScope reports what a signature claims. It does not call `SecStaticCodeCheckValidity`, verify the code seal, or prove that a signature is valid.
 
-- **Native Security Framework Integration**: Direct use of Apple's Security.framework APIs for maximum performance
-- **Comprehensive Analysis**: Extracts entitlements, Team ID, signature flags, certificate chains, and notarization status
-- **Security Risk Assessment**: Built-in rules engine identifies dangerous entitlement combinations
-- **Multiple Output Formats**: JSON for automation, self-contained HTML for reporting
-- **High Performance**: Concurrent scanning with configurable worker pools
-- **Zero Dependencies**: No external tools required (no codesign/spctl subprocesses)
+Notarization is not reported in v1.0. `--assessment` is accepted but disabled because the old bridge called the wrong private API and confused a local Gatekeeper policy verdict with a stapled notarization ticket. See [ADR-0003](docs/adr/0003-assessment-is-disabled-until-the-bridge-is-correct.md).
 
-## Installation
+## Requirements
 
-### Prerequisites
+- macOS 13 or later
+- Swift 5.10 or later
+- Xcode Command Line Tools or Xcode
 
-- macOS 13.0 (Ventura) or later
-- Xcode Command Line Tools or Xcode 15+
+## Build and test
 
-### Building from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/MachScope.git
-cd MachScope
-
-# Build the release version
-make release
-
-# Install to /usr/local/bin (requires sudo)
-make install
+```sh
+make build
+make test
+.build/release/machscope --help
 ```
 
-### Homebrew (Coming Soon)
-
-```bash
-brew tap yourusername/machscope
-brew install machscope
-```
-
-## Quick Start
-
-```bash
-# Quick scan of /Applications with HTML report
-machscope quick /Applications
-
-# JSON output for automation
-machscope quick /Applications --json > report.json
-
-# Detailed scan with custom options
-machscope scan /Applications \
-  --format both \
-  --output ./reports \
-  --exclude "/System,/Library" \
-  --concurrency 8
-```
+`make build` creates a release build at `.build/release/machscope`. The Makefile also provides `make run`, which runs a quick scan of `/Applications`.
 
 ## Usage
 
-### Commands
+```text
+machscope scan <PATH> [OPTIONS]
+machscope quick <PATH> [OPTIONS]
+machscope rules [--rules FILE]
+machscope --help
+machscope --version
+```
 
-#### `machscope quick [PATH]`
-Performs a quick scan with default settings.
+Both `scan` and `quick` default to JSON and use eight workers. `quick` also excludes `/System` and `/Library` and limits traversal to depth 8. The two commands otherwise use the same parser and scan path.
 
-Options:
-- `--json, -j`: Output JSON instead of HTML
+```sh
+.build/release/machscope quick /Applications --format json > /tmp/machscope.json
+.build/release/machscope scan /bin/ls --format html --out /tmp/machscope-report
+.build/release/machscope rules
+```
 
-#### `machscope scan PATH`
-Performs a detailed scan with customizable options.
+### Scan options
 
-Options:
-- `--format, -f`: Output format (html, json, or both)
-- `--output, -o`: Output directory
-- `--rules`: Custom rules file (YAML)
-- `--exclude`: Comma-separated paths to exclude
-- `--max-depth`: Maximum directory traversal depth
-- `--follow-symlinks`: Follow symbolic links
-- `--concurrency, -c`: Number of concurrent workers
-- `--verbose, -v`: Enable verbose output
+| Option | Meaning |
+|---|---|
+| `--format html\|json\|both` | Select the output format. Default: `json`. `both` requires `--out`. |
+| `--out DIR` | Write `report.json`, `report.html`, or both to a directory. |
+| `--rules FILE` | Load a custom YAML ruleset. A missing or malformed ruleset is a usage error. |
+| `--exclude PATHS` | Exclude comma-separated path prefixes or whole path components. |
+| `--max-depth N` | Limit directory traversal depth. |
+| `--concurrency N` | Set the worker count. Default: 8. |
+| `--fail-on SEVERITY` | Exit 1 for a finding at or above `low`, `medium`, `high`, or `critical`. |
+| `--assessment` | Accept the disabled assessment request and explain it on stderr. |
+| `--bundle-mains-only` | Scan only the main executable in each app bundle. |
+| `--verbose` | Write progress to stderr every 500 records or two seconds. |
+| `--help` | Print usage. |
 
-## Security Findings
+Directory scans never follow symbolic links. A bad binary produces a record with entries in `errors`; it does not stop the batch.
 
-MachScope identifies various security-relevant configurations:
+### Exit codes
 
-### Critical Severity
-- **Get Task Allow**: Allows debugger attachment in production builds
-- **Multiple Disabled Protections**: Combination of weakened security boundaries
+| Code | Meaning |
+|---:|---|
+| 0 | The scan completed and no finding met the requested `--fail-on` threshold. |
+| 1 | The scan completed and at least one finding met or exceeded `--fail-on`. |
+| 2 | Usage error, including an unknown flag, a missing argument, or an invalid ruleset. |
+| 3 | Scan error because the root does not exist or cannot be read. |
 
-### High Severity
-- **Disabled Library Validation**: Can load unsigned libraries
-- **DYLD Environment Variables**: Accepts dynamic linker manipulation
-- **JIT Compilation**: Can execute dynamically generated code
-- **Unsigned Executable Memory**: Can create executable memory without signing
+Without `--fail-on`, findings do not change the exit code. A record-level extraction error also does not produce exit 3.
 
-### Medium Severity
-- **Missing Hardened Runtime**: Not compiled with runtime protections
-- **Not Notarized**: Binary hasn't been notarized by Apple
+## JSON contract
 
-## Output Formats
+JSON output is an envelope with `schema_version`, `tool`, `scan`, and `records`.
 
-### JSON Format
-Machine-readable format suitable for automation and SIEM ingestion:
+- Keys use `snake_case` at every depth.
+- An absent optional field means unknown. MachScope does not emit explicit `null` values.
+- `records` is sorted by UTF-8 path bytes.
+- `schema_version` changes only for a breaking contract change. Additive fields do not change it.
+- `scan.rules_digest` is the SHA-256 digest of the loaded ruleset. It ties a finding set and its scores to that ruleset.
+- stdout contains only the selected report. Progress and warnings go to stderr.
+
+This is the output of `.build/debug/machscope scan /bin/ls --format json` on the benchmark host:
 
 ```json
 {
-  "path": "/Applications/Example.app/Contents/MacOS/Example",
-  "bundle_id": "com.example.app",
-  "team_id": "ABC123",
-  "hardened_runtime": true,
-  "entitlements": {
-    "com.apple.security.cs.allow-jit": true
-  },
-  "findings": [
+  "records" : [
     {
-      "id": "ALLOW-JIT",
-      "severity": "high",
-      "reason": "Enables just-in-time compilation"
+      "arch" : [
+        "x86_64",
+        "arm64e"
+      ],
+      "binary_type" : "exec",
+      "cdhash" : "7640f65d2a51ab03a93df1917c7449ed3d3a0b2e",
+      "certificate_chain" : [
+        {
+          "sha256" : "1ee9d45f25111c924aa3ad69f3fffe5da5ac3691bbb2a1a48d85fad1863eade1",
+          "subject" : "macOS Software Signing"
+        },
+        {
+          "sha256" : "76843e4c6e3acb216134a57ba8aff512e394672b3966b996da80f009ee7b4645",
+          "subject" : "Apple Code Signing Certification Authority"
+        },
+        {
+          "sha256" : "b0b1730ecbc7ff4505142c49f1295e6eda6bcaed7e2c68c5be91b5a11001f024",
+          "subject" : "Apple Root CA"
+        }
+      ],
+      "developer_type" : "Unknown",
+      "entitlements" : {},
+      "errors" : [],
+      "findings" : [
+        {
+          "id" : "NO_HARDENED_RUNTIME",
+          "reason" : "Hardened Runtime not enabled",
+          "severity" : "medium"
+        }
+      ],
+      "format" : "Mach-O universal (x86_64 arm64e)",
+      "hardened_runtime" : false,
+      "has_quarantine_xattr" : false,
+      "path" : "/bin/ls",
+      "platform_binary" : true,
+      "risk_band" : "low",
+      "risk_score" : 5,
+      "signature_flags" : [],
+      "signing_authorities" : [
+        "macOS Software Signing",
+        "Apple Code Signing Certification Authority",
+        "Apple Root CA"
+      ],
+      "signing_identifier" : "com.apple.ls"
     }
-  ]
+  ],
+  "scan" : {
+    "duration_ms" : 2,
+    "files_seen" : 1,
+    "records" : 1,
+    "root" : "/bin/ls",
+    "rules_digest" : "sha256:903a6f7c3e3ee825247fcfa405f89fc8694e7f47c16031ec939f328ac8cd9d45",
+    "started_at" : "2026-08-26T21:36:05Z"
+  },
+  "schema_version" : 1,
+  "tool" : {
+    "name" : "machscope",
+    "version" : "1.0.0-dev"
+  }
 }
 ```
 
-### HTML Report
-Self-contained HTML file with:
-- Sortable and filterable results
-- Severity badges and color coding
-- Grouping by Team ID and Bundle ID
-- Search functionality
-- No external dependencies
+## HTML reports
 
-## Development
+HTML output is a self-contained table with severity badges. Click a supported column header to sort it. It has no filtering, grouping, or search controls.
 
-### Project Structure
-```
-MachScope/
-├── Sources/
-│   ├── MachScopeCLI/        # Command-line interface
-│   └── MachScopeCore/       # Core scanning library
-├── Tests/                   # Unit and integration tests
-├── Package.swift            # Swift Package Manager config
-└── Makefile                 # Build automation
-```
+## Rules and scoring
 
-### Building and Testing
-```bash
-# Build debug version
-make build
-
-# Run tests
-make test
-
-# Run tests with coverage
-make test-coverage
-
-# Format code (requires swift-format)
-make format
-
-# Lint code (requires SwiftLint)
-make lint
-```
-
-### Contributing
-Please read the development documentation in `.docs/` for guidelines on:
-- Code conventions (`.docs/conventions/swift-conventions.md`)
-- Task tracking (`.docs/Task_List.md`)
-- Design decisions (`.docs/Design.md`)
+The packaged YAML ruleset is the only source of findings. `machscope rules` lists each rule's ID, severity, weight, and match. Scores are derived from the findings and capped at 100; they are a sort key, not a malware verdict.
 
 ## Performance
 
-Typical performance on Apple Silicon Macs:
-- `/Applications` directory: < 2 minutes
-- Memory usage: < 500MB
-- Concurrent workers: 8 (configurable)
+On an Apple M5 Max running macOS 26.5, a debug build scanned 940 records under `/Applications` in a median 4.81 seconds with `--concurrency 8` across three runs. Security.framework calls remain capped at two pending a follow-up ADR; worker counts above two do not mean that those calls run at the requested concurrency.
 
-## Security & Privacy
+## Limits
 
-- **Read-only operations**: Never modifies or executes scanned binaries
-- **Local-only**: No network connections or data collection
-- **No telemetry**: Your scan results stay on your machine
-
-## Limitations
-
-- Requires macOS 13+ (Security.framework APIs)
-- Cannot scan System Integrity Protection (SIP) protected files without Full Disk Access
-- Some entitlements may require additional privileges to read
-
+- MachScope reads only files that the current user can access.
+- It does not validate signatures or code seals.
+- It does not report notarization in v1.0.
+- It does not follow symbolic links.
