@@ -1,5 +1,5 @@
 #import "include/SecBridge.h"
-// Avoid CommonCrypto linker dependency by using SecCertificateCopyNormalizedSubjectSequence
+#include <CommonCrypto/CommonDigest.h>
 #include <Security/SecCertificate.h>
 
 @implementation SecBridge
@@ -69,19 +69,19 @@
             SecCertificateRef cert = (SecCertificateRef)CFArrayGetValueAtIndex(certs, i);
             if (!cert) continue;
             CFStringRef subject = SecCertificateCopySubjectSummary(cert);
-            // Normalized subject sequence (DER) as a stable identifier (not SHA-256 digest)
-            CFDataRef norm = SecCertificateCopyNormalizedSubjectSequence(cert);
-            NSMutableString *hex = [NSMutableString string];
-            if (norm) {
-                const UInt8 *bytes = CFDataGetBytePtr(norm);
-                CFIndex len = CFDataGetLength(norm);
-                for (CFIndex j=0; j<len && j<64; j++) { // limit length
-                    [hex appendFormat:@"%02x", bytes[j]];
+            CFDataRef der = SecCertificateCopyData(cert);
+            NSMutableString *hex = [NSMutableString stringWithCapacity:CC_SHA256_DIGEST_LENGTH * 2];
+            if (der) {
+                unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+                CC_SHA256(CFDataGetBytePtr(der), (CC_LONG)CFDataGetLength(der), digest);
+                for (CFIndex j = 0; j < CC_SHA256_DIGEST_LENGTH; j++) {
+                    [hex appendFormat:@"%02x", digest[j]];
                 }
-                CFRelease(norm);
+                CFRelease(der);
             }
-            [summaries addObject:@{ @"subject": (__bridge_transfer NSString *)subject ?: @"",
+            [summaries addObject:@{ @"subject": subject ? (__bridge NSString *)subject : @"",
                                     @"sha256": hex }];
+            if (subject) CFRelease(subject);
         }
     }
     if (info) CFRelease(info);

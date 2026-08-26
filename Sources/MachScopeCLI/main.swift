@@ -19,6 +19,7 @@ func printUsage() {
     Usage:
       machscope scan <PATH> [--format html|json|both] [--out DIR] [--rules FILE] [--exclude PATHS] [--max-depth N] [--follow-symlinks] [--concurrency N] [--verbose]
       machscope quick <PATH>
+      machscope rules [--rules FILE]
     """
     print(usage)
 }
@@ -42,11 +43,28 @@ func parseFlags(_ args: inout ArraySlice<String>, into config: inout CLIConfig) 
     }
 }
 
+func loadRules(at path: String?) -> RulesEngine {
+    guard let path else { return RulesEngine.loadDefault() }
+    do {
+        return try RulesEngine.load(fromFilePath: path)
+    } catch {
+        fputs("error: \(error)\n", stderr)
+        exit(2)
+    }
+}
+
 var args = CommandLine.arguments.dropFirst()[...]
 guard let sub = args.first else { printUsage(); exit(1) }
 _ = args.removeFirst()
 
 switch sub {
+case "rules":
+    var config = CLIConfig()
+    parseFlags(&args, into: &config)
+    let engine = loadRules(at: config.rulesPath)
+    for rule in engine.rules {
+        print("\(rule.id)\t\(rule.severity.rawValue)\t\(rule.weight)\t\(rule.matchSummary)")
+    }
 case "quick":
     guard let path = args.first else { printUsage(); exit(1) }
     var config = CLIConfig()
@@ -56,7 +74,7 @@ case "quick":
     let files = FileWalker().enumeratePaths(options: .init(root: root, excludes: ["/System", "/Library"], maxDepth: 8, followSymlinks: config.followSymlinks))
     if config.verbose { fputs("Found \(files.count) files. Scanning with concurrency=8...\n", stderr) }
     let start = Date()
-    let rulesEngine = config.rulesPath.flatMap { RulesEngine.load(fromFilePath: $0) } ?? RulesEngine.loadDefault()
+    let rulesEngine = loadRules(at: config.rulesPath)
     let records = Scanner(rulesEngine: rulesEngine).scan(urls: files, concurrency: 8)
     if config.verbose { fputs("Scan completed in \(String(format: "%.2f", Date().timeIntervalSince(start)))s\n", stderr) }
     switch config.format.lowercased() {
@@ -82,14 +100,17 @@ case "scan":
     _ = args.removeFirst()
     var config = CLIConfig()
     parseFlags(&args, into: &config)
+    if config.assessment {
+        fputs("Assessment is unavailable pending a follow-up ADR.\n", stderr)
+    }
     let root = URL(fileURLWithPath: path)
     let files = FileWalker().enumeratePaths(options: .init(root: root, excludes: config.exclude, maxDepth: config.maxDepth, followSymlinks: config.followSymlinks, bundleMainsOnly: config.bundleMainsOnly))
-    let rulesEngine = config.rulesPath.flatMap { RulesEngine.load(fromFilePath: $0) } ?? RulesEngine.loadDefault()
+    let rulesEngine = loadRules(at: config.rulesPath)
     if config.verbose {
         fputs("Found \(files.count) files. Scanning with concurrency=\(config.concurrency)...\n", stderr)
     }
     let start = Date()
-    let records = Scanner(rulesEngine: rulesEngine).scan(urls: files, concurrency: config.concurrency, assessmentEnabled: config.assessment)
+    let records = Scanner(rulesEngine: rulesEngine).scan(urls: files, concurrency: config.concurrency)
     if config.verbose {
         fputs("Scan completed in \(String(format: "%.2f", Date().timeIntervalSince(start)))s\n", stderr)
     }
