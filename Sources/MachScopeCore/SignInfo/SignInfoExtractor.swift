@@ -4,7 +4,7 @@ import MachO
 
 public struct SignInfoExtractor {
     private let rulesEngine: RulesEngine?
-    private static let secAPISem = DispatchSemaphore(value: 2)
+    private static let secAPISem = DispatchSemaphore(value: 4)
     public init(rulesEngine: RulesEngine? = nil) {
         self.rulesEngine = rulesEngine
     }

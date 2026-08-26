@@ -15,7 +15,8 @@ has never meant eight concurrent extractions. Nobody recorded why the gate was t
 misbehaves under load, that is a fact worth writing down rather than a limit worth quietly
 removing. It required a measurement first.
 
-Measured 2026-08-26 on an Apple M5 Max, macOS 26.5, Swift 6.3.3, debug build, over 940 records
+Measured 2026-08-26 on an Apple M5 Max, macOS 26.6 (build 25G72), Swift 6.3.3, debug build, over
+940 records
 under `/Applications`. Three runs per cell, median reported, wall-clock seconds:
 
 | cap | `-c 4` | `-c 8` | `-c 16` |
@@ -63,6 +64,10 @@ queue — but it stops being advertised as a way to go faster.
 **The number is provisional and its evidence is named.** This ADR is superseded, not amended, if
 a larger corpus or a different machine shows either a crash at cap 4 or a real gain above it.
 `.docs/bench/2026-08-26-concurrency.md` holds the raw timings.
+
+*(Corrected 2026-08-26: the host line first read macOS 26.5. The machine is 26.6; 26.5 was the
+SDK directory name misread as the OS version. The timings and the decision are unaffected — the
+same binary on the same hardware produced them.)*
 
 ## Consequences
 
