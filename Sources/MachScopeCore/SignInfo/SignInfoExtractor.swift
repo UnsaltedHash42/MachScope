@@ -68,7 +68,7 @@ public struct SignInfoExtractor {
             .flatMap { $0 as? Data }?
             .map { String(format: "%02x", $0) }
             .joined()
-        let platformBinary = (signInfo["platform-identifier"] as? NSNumber)?.intValue != 0
+        let platformBinary = ((signInfo["platform-identifier"] as? NSNumber)?.intValue ?? 0) != 0
         let signingFormat = signInfo["format"] as? String
 
         let architectureDetection = MachOMagic().architectureDetection(at: url)
