@@ -58,9 +58,12 @@ public struct SignInfoExtractor {
         ) as? [[String: Any]] ?? []
         SignInfoExtractor.secAPISem.signal()
         let certs = certificateDictionaries.map { dictionary in
-            Record.CertificateSummary(
+            let sha256 = (dictionary["sha256"] as? String).flatMap {
+                $0.isEmpty ? nil : $0
+            }
+            return Record.CertificateSummary(
                 subject: dictionary["subject"] as? String ?? "",
-                sha256: dictionary["sha256"] as? String ?? ""
+                sha256: sha256
             )
         }
         let authorities = certs.map(\.subject)
@@ -81,6 +84,7 @@ public struct SignInfoExtractor {
         let notarization: String? = nil
         let engine = self.rulesEngine ?? RulesEngine.loadDefault()
         let findings = engine.evaluate(entitlements: entitlements.values, flags: flags.flags, notarization: notarization, hasQuarantine: quarantine)
+        let riskScore = engine.riskScore(for: findings)
 
         let developerType = authorities.first.map { auth in
             if auth.contains("Apple Development") || auth.contains("Apple Distribution") { return "Apple" }
@@ -108,6 +112,7 @@ public struct SignInfoExtractor {
             hasQuarantineXattr: quarantine,
             certificateChain: certs,
             findings: findings,
+            riskScore: riskScore,
             errors: errors
         )
     }

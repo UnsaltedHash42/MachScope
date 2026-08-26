@@ -43,7 +43,7 @@ public enum EntitlementValue: Codable, Sendable, Equatable {
         case .data(let count):
             try container.encode(["data_bytes": count])
         case .unknown:
-            try container.encodeNil()
+            try container.encode(["unknown": true])
         }
     }
 
@@ -64,6 +64,8 @@ public enum EntitlementValue: Codable, Sendable, Equatable {
         } else if let value = try? container.decode([String: EntitlementValue].self) {
             if value.count == 1, case .int(let count)? = value["data_bytes"] {
                 self = .data(count)
+            } else if value.count == 1, value["unknown"] == .bool(true) {
+                self = .unknown
             } else {
                 self = .dictionary(value)
             }

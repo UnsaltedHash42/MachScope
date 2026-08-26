@@ -1,10 +1,30 @@
 import Foundation
 
+public enum RiskBand: String, Codable, Sendable {
+    case none, low, medium, high, critical
+
+    init(score: Int) {
+        switch score {
+        case 0: self = .none
+        case 1...9: self = .low
+        case 10...29: self = .medium
+        case 30...59: self = .high
+        default: self = .critical
+        }
+    }
+}
+
 public struct Record: Codable, Sendable {
     public struct CertificateSummary: Codable, Sendable {
         public let subject: String
-        public let sha256: String
-        public init(subject: String, sha256: String) {
+        public let sha256: String?
+
+        enum CodingKeys: String, CodingKey {
+            case subject
+            case sha256
+        }
+
+        public init(subject: String, sha256: String? = nil) {
             self.subject = subject
             self.sha256 = sha256
         }
@@ -26,9 +46,36 @@ public struct Record: Codable, Sendable {
     public let sandboxed: Bool?
     public let developerType: String?
     public let hasQuarantineXattr: Bool?
-    public let certificateChain: [CertificateSummary]?
+    public let certificateChain: [CertificateSummary]
     public let findings: [Finding]
+    public let riskScore: Int
+    public let riskBand: RiskBand
     public let errors: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case path
+        case bundleId = "bundle_id"
+        case binaryType = "binary_type"
+        case arch
+        case teamId = "team_id"
+        case signingIdentifier = "signing_identifier"
+        case signingAuthorities = "signing_authorities"
+        case hardenedRuntime = "hardened_runtime"
+        case signatureFlags = "signature_flags"
+        case cdhash
+        case platformBinary = "platform_binary"
+        case format
+        case notarization
+        case entitlements
+        case sandboxed
+        case developerType = "developer_type"
+        case hasQuarantineXattr = "has_quarantine_xattr"
+        case certificateChain = "certificate_chain"
+        case findings
+        case riskScore = "risk_score"
+        case riskBand = "risk_band"
+        case errors
+    }
 
     public init(
         path: String,
@@ -48,8 +95,9 @@ public struct Record: Codable, Sendable {
         sandboxed: Bool? = nil,
         developerType: String? = nil,
         hasQuarantineXattr: Bool? = nil,
-        certificateChain: [CertificateSummary]? = nil,
+        certificateChain: [CertificateSummary] = [],
         findings: [Finding] = [],
+        riskScore: Int = 0,
         errors: [String] = []
     ) {
         self.path = path
@@ -71,6 +119,8 @@ public struct Record: Codable, Sendable {
         self.hasQuarantineXattr = hasQuarantineXattr
         self.certificateChain = certificateChain
         self.findings = findings
+        self.riskScore = min(100, max(0, riskScore))
+        self.riskBand = RiskBand(score: self.riskScore)
         self.errors = errors
     }
 }

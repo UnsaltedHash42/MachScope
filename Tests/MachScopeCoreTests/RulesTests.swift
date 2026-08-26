@@ -17,6 +17,69 @@ import Testing
         #expect(findings.isEmpty)
     }
 
+    @Test func riskScoreIsReproducibleFromFindingsAndRules() {
+        let engine = scoringEngine()
+        let findings = scoringFindings()
+        let score = engine.riskScore(for: findings)
+        let record = Record(path: "/tmp/example", findings: findings, riskScore: score)
+
+        #expect(score == 42)
+        #expect(record.riskBand == .high)
+    }
+
+    @Test func riskScoreDoesNotDependOnFindingOrder() {
+        let engine = scoringEngine()
+        let findings = scoringFindings()
+
+        #expect(engine.riskScore(for: findings) == engine.riskScore(for: Array(findings.reversed())))
+    }
+
+    @Test func riskScoreCapsAtOneHundred() {
+        let engine = scoringEngine()
+        let critical = scoringFindings()[0]
+
+        #expect(engine.riskScore(for: [critical, critical, critical]) == 100)
+    }
+
+    @Test func riskBandsUsePublishedThresholds() {
+        #expect(Record(path: "0", riskScore: 0).riskBand == .none)
+        #expect(Record(path: "1", riskScore: 1).riskBand == .low)
+        #expect(Record(path: "9", riskScore: 9).riskBand == .low)
+        #expect(Record(path: "10", riskScore: 10).riskBand == .medium)
+        #expect(Record(path: "29", riskScore: 29).riskBand == .medium)
+        #expect(Record(path: "30", riskScore: 30).riskBand == .high)
+        #expect(Record(path: "59", riskScore: 59).riskBand == .high)
+        #expect(Record(path: "60", riskScore: 60).riskBand == .critical)
+        #expect(Record(path: "100", riskScore: 100).riskBand == .critical)
+    }
+
+    @Test func rulesDigestTracksRawRulesetBytes() throws {
+        let yaml = """
+        version: 2
+        weights: { low: 1, medium: 5, high: 15, critical: 40 }
+        rules:
+          - id: TEST
+            severity: low
+            reason: Test rule
+            all:
+              - flag: runtime
+                present: true
+        """
+        let first = try RulesEngine.load(fromYAMLData: Data(yaml.utf8))
+        let second = try RulesEngine.load(fromYAMLData: Data((yaml + "\n").utf8))
+        let report = ScanReport(
+            root: "/tmp",
+            startedAt: Date(timeIntervalSince1970: 0),
+            durationMs: 0,
+            filesSeen: 0,
+            rulesDigest: first.digest,
+            records: []
+        )
+
+        #expect(report.scan.rulesDigest == first.digest)
+        #expect(first.digest != second.digest)
+    }
+
     @Test func everyDefaultRuleFires() {
         let engine = RulesEngine.loadDefault()
         for rule in engine.rules {
@@ -174,6 +237,43 @@ import Testing
                         present: true
         """
     ]
+
+    private func scoringEngine() -> RulesEngine {
+        RulesEngine(rules: [
+            .init(
+                id: "CRITICAL",
+                severity: .critical,
+                reason: "Critical",
+                weight: 40,
+                mode: .all,
+                conditions: [.flag("critical", present: true)]
+            ),
+            .init(
+                id: "LOW_ONE",
+                severity: .low,
+                reason: "Low one",
+                weight: 1,
+                mode: .all,
+                conditions: [.flag("low-one", present: true)]
+            ),
+            .init(
+                id: "LOW_TWO",
+                severity: .low,
+                reason: "Low two",
+                weight: 1,
+                mode: .all,
+                conditions: [.flag("low-two", present: true)]
+            )
+        ])
+    }
+
+    private func scoringFindings() -> [Finding] {
+        [
+            Finding(id: "CRITICAL", severity: .critical, reason: "Critical"),
+            Finding(id: "LOW_ONE", severity: .low, reason: "Low one"),
+            Finding(id: "LOW_TWO", severity: .low, reason: "Low two")
+        ]
+    }
 }
 
 private struct RuleContext {
