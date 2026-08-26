@@ -80,7 +80,7 @@ JSON output is an envelope with `schema_version`, `tool`, `scan`, and `records`.
 - `scan.rules_digest` is the SHA-256 digest of the loaded ruleset. It ties a finding set and its scores to that ruleset.
 - stdout contains only the selected report. Progress and warnings go to stderr.
 
-This is the output of `.build/debug/machscope scan /bin/ls --format json` on the benchmark host:
+This is the output of `.build/release/machscope scan /bin/ls --format json` on the benchmark host:
 
 ```json
 {
@@ -107,8 +107,12 @@ This is the output of `.build/debug/machscope scan /bin/ls --format json` on the
         }
       ],
       "developer_type" : "Unknown",
-      "entitlements" : {},
-      "errors" : [],
+      "entitlements" : {
+
+      },
+      "errors" : [
+
+      ],
       "findings" : [
         {
           "id" : "NO_HARDENED_RUNTIME",
@@ -119,11 +123,13 @@ This is the output of `.build/debug/machscope scan /bin/ls --format json` on the
       "format" : "Mach-O universal (x86_64 arm64e)",
       "hardened_runtime" : false,
       "has_quarantine_xattr" : false,
-      "path" : "/bin/ls",
+      "path" : "\/bin\/ls",
       "platform_binary" : true,
       "risk_band" : "low",
       "risk_score" : 5,
-      "signature_flags" : [],
+      "signature_flags" : [
+
+      ],
       "signing_authorities" : [
         "macOS Software Signing",
         "Apple Code Signing Certification Authority",
@@ -136,14 +142,14 @@ This is the output of `.build/debug/machscope scan /bin/ls --format json` on the
     "duration_ms" : 2,
     "files_seen" : 1,
     "records" : 1,
-    "root" : "/bin/ls",
+    "root" : "\/bin\/ls",
     "rules_digest" : "sha256:903a6f7c3e3ee825247fcfa405f89fc8694e7f47c16031ec939f328ac8cd9d45",
-    "started_at" : "2026-08-26T21:36:05Z"
+    "started_at" : "2026-08-26T22:15:27Z"
   },
   "schema_version" : 1,
   "tool" : {
     "name" : "machscope",
-    "version" : "1.0.0-dev"
+    "version" : "1.0.0"
   }
 }
 ```
