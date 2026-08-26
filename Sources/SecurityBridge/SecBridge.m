@@ -79,8 +79,9 @@
                 }
                 CFRelease(der);
             }
-            [summaries addObject:@{ @"subject": (__bridge_transfer NSString *)subject ?: @"",
+            [summaries addObject:@{ @"subject": subject ? (__bridge NSString *)subject : @"",
                                     @"sha256": hex }];
+            if (subject) CFRelease(subject);
         }
     }
     if (info) CFRelease(info);
