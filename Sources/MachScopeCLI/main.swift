@@ -82,6 +82,9 @@ case "scan":
     _ = args.removeFirst()
     var config = CLIConfig()
     parseFlags(&args, into: &config)
+    if config.assessment {
+        fputs("Assessment is unavailable pending a follow-up ADR.\n", stderr)
+    }
     let root = URL(fileURLWithPath: path)
     let files = FileWalker().enumeratePaths(options: .init(root: root, excludes: config.exclude, maxDepth: config.maxDepth, followSymlinks: config.followSymlinks, bundleMainsOnly: config.bundleMainsOnly))
     let rulesEngine = config.rulesPath.flatMap { RulesEngine.load(fromFilePath: $0) } ?? RulesEngine.loadDefault()
@@ -89,7 +92,7 @@ case "scan":
         fputs("Found \(files.count) files. Scanning with concurrency=\(config.concurrency)...\n", stderr)
     }
     let start = Date()
-    let records = Scanner(rulesEngine: rulesEngine).scan(urls: files, concurrency: config.concurrency, assessmentEnabled: config.assessment)
+    let records = Scanner(rulesEngine: rulesEngine).scan(urls: files, concurrency: config.concurrency)
     if config.verbose {
         fputs("Scan completed in \(String(format: "%.2f", Date().timeIntervalSince(start)))s\n", stderr)
     }

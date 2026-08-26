@@ -13,32 +13,32 @@ public struct RulesEngine {
         self.yamlRules = yamlRules
     }
 
-    public func evaluate(entitlements: [String: Bool], flags: [String], notarization: String?, hardenedRuntime: Bool? = nil, hasQuarantine: Bool? = nil) -> [Finding] {
+    public func evaluate(entitlements: [String: EntitlementValue], flags: [String], notarization: String?, hardenedRuntime: Bool? = nil, hasQuarantine: Bool? = nil) -> [Finding] {
         var findings: [Finding] = []
 
         func add(_ id: String, _ severity: Finding.Severity, _ reason: String) {
             findings.append(Finding(id: id, severity: severity, reason: reason))
         }
 
-        if entitlements["com.apple.security.cs.disable-library-validation"] == true {
+        if entitlements["com.apple.security.cs.disable-library-validation"]?.isTrue == true {
             add("DLV", .high, "Disable Library Validation allows dylib injection")
         }
-        if entitlements["com.apple.security.cs.allow-dyld-environment-variables"] == true {
+        if entitlements["com.apple.security.cs.allow-dyld-environment-variables"]?.isTrue == true {
             add("DYLD_ENV", .high, "Allows manipulation via DYLD_* environment variables")
         }
-        if entitlements["com.apple.security.cs.allow-unsigned-executable-memory"] == true {
+        if entitlements["com.apple.security.cs.allow-unsigned-executable-memory"]?.isTrue == true {
             add("UNSIGNED_EXEC_MEM", .high, "Allows creation of unsigned executable memory (code injection risk)")
         }
-        if entitlements["com.apple.security.cs.allow-jit"] == true {
+        if entitlements["com.apple.security.cs.allow-jit"]?.isTrue == true {
             add("ALLOW_JIT", .high, "JIT execution enabled")
         }
-        if entitlements["com.apple.security.get-task-allow"] == true {
+        if entitlements["com.apple.security.get-task-allow"]?.isTrue == true {
             add("GET_TASK_ALLOW", .critical, "Debugger attachment permitted in production context")
         }
 
         // YAML-driven rules for entitlements
         for rule in yamlRules {
-            if entitlements[rule.entitlement] == true {
+            if entitlements[rule.entitlement]?.isTrue == true {
                 add(rule.entitlement, rule.severity, rule.reason)
             }
         }
@@ -56,15 +56,15 @@ public struct RulesEngine {
         }
 
         // Combination: allow-jit and network usage (approximate by presence of client entitlement if present)
-        if entitlements["com.apple.security.cs.allow-jit"] == true {
+        if entitlements["com.apple.security.cs.allow-jit"]?.isTrue == true {
             let networkKeys = ["com.apple.security.network.client", "com.apple.security.network.server"]
-            if networkKeys.contains(where: { entitlements[$0] == true }) {
+            if networkKeys.contains(where: { entitlements[$0]?.isTrue == true }) {
                 add("JIT_AND_NETWORK", .high, "JIT combined with network entitlements increases risk")
             }
         }
 
         // Combination: get-task-allow with hardened runtime disabled -> critical
-        if entitlements["com.apple.security.get-task-allow"] == true && !(flags.contains("runtime")) {
+        if entitlements["com.apple.security.get-task-allow"]?.isTrue == true && !(flags.contains("runtime")) {
             add("GTA_NO_HARDENED", .critical, "Debugger allowed without Hardened Runtime")
         }
 

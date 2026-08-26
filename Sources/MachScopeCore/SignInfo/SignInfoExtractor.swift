@@ -37,8 +37,9 @@ public struct SignInfoExtractor {
         return (dict, errors)
     }
 
-    public func buildRecord(for url: URL, assessmentEnabled: Bool = false) -> Record {
+    public func buildRecord(for url: URL) -> Record {
         let (signInfo, initialErrors) = extractWithErrors(for: url)
+        var errors = initialErrors
         let entitlements = Entitlements.fromSigningInfo(signInfo)
         let flags = SignatureFlags.fromSigningInfo(signInfo)
 
@@ -49,29 +50,38 @@ public struct SignInfoExtractor {
 
         let teamId = signInfo["teamid"] as? String
         let signingIdentifier = signInfo["identifier"] as? String
-        let authorities = (signInfo["authority"] as? [String]) ?? []
-        let certs: [Record.CertificateSummary]? = (signInfo["certificates"] as? [Any])?.compactMap { any in
-            // certificates is usually an array of SecCertificate refs which bridge to Data/CFData in signing info
-            if let dict = any as? [String: Any] {
-                let subj = dict["subject"] as? String ?? ""
-                let sha = dict["sha256"] as? String ?? ""
-                return Record.CertificateSummary(subject: subj, sha256: sha)
-            }
-            return nil
+        var certificateStatus: OSStatus = errSecSuccess
+        SignInfoExtractor.secAPISem.wait()
+        let certificateDictionaries = SecBridge.copyCertificateSummaries(
+            forPath: url.path,
+            error: &certificateStatus
+        ) as? [[String: Any]] ?? []
+        SignInfoExtractor.secAPISem.signal()
+        let certs = certificateDictionaries.map { dictionary in
+            Record.CertificateSummary(
+                subject: dictionary["subject"] as? String ?? "",
+                sha256: dictionary["sha256"] as? String ?? ""
+            )
+        }
+        let authorities = certs.map(\.subject)
+        let cdhash = (signInfo["cdhashes"] as? [Any])?.first
+            .flatMap { $0 as? Data }?
+            .map { String(format: "%02x", $0) }
+            .joined()
+        let platformBinary = (signInfo["platform-identifier"] as? NSNumber)?.intValue != 0
+        let signingFormat = signInfo["format"] as? String
+
+        let architectureDetection = MachOMagic().architectureDetection(at: url)
+        if let error = architectureDetection.error {
+            errors.append(error)
         }
 
-        let archs: [String] = MachOMagic().detectArchitectures(at: url)
-
-        // Quarantine xattr
         let quarantine = hasQuarantineAttribute(atPath: url.path)
-
-        // Sandbox: infer from entitlements
-        let sandboxed = entitlements.values["com.apple.security.app-sandbox"].map { $0 }
-        let notarization = Assessment().assessNotarizationString(at: url, enabled: assessmentEnabled)
+        let sandboxed = entitlements.values["com.apple.security.app-sandbox"]?.isTrue
+        let notarization: String? = nil
         let engine = self.rulesEngine ?? RulesEngine.loadDefault()
         let findings = engine.evaluate(entitlements: entitlements.values, flags: flags.flags, notarization: notarization, hardenedRuntime: flags.hardenedRuntime, hasQuarantine: quarantine)
 
-        // Developer type from authorities
         let developerType = authorities.first.map { auth in
             if auth.contains("Apple Development") || auth.contains("Apple Distribution") { return "Apple" }
             if auth.contains("Developer ID Application") { return "Developer ID" }
@@ -82,12 +92,15 @@ public struct SignInfoExtractor {
             path: url.path,
             bundleId: bundleId,
             binaryType: MachOMagic().detect(at: url).rawValue,
-            arch: archs,
+            arch: architectureDetection.architectures,
             teamId: teamId,
             signingIdentifier: signingIdentifier,
             signingAuthorities: authorities,
             hardenedRuntime: flags.hardenedRuntime,
             signatureFlags: flags.flags,
+            cdhash: cdhash,
+            platformBinary: platformBinary,
+            format: signingFormat,
             notarization: notarization,
             entitlements: entitlements.values,
             sandboxed: sandboxed,
@@ -95,7 +108,7 @@ public struct SignInfoExtractor {
             hasQuarantineXattr: quarantine,
             certificateChain: certs,
             findings: findings,
-            errors: initialErrors
+            errors: errors
         )
     }
 

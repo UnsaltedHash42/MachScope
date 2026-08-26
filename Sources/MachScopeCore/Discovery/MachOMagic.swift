@@ -33,58 +33,100 @@ public struct MachOMagic {
     }
 
     public func detectArchitectures(at url: URL) -> [String] {
-        guard let data = try? Data(contentsOf: url, options: [.mappedIfSafe]) else { return [] }
-        if data.count < 8 { return [] }
+        architectureDetection(at: url).architectures
+    }
 
-        let MH_MAGIC: UInt32 = 0xfeedface
-        let MH_CIGAM: UInt32 = 0xcefaedfe
-        let MH_MAGIC_64: UInt32 = 0xfeedfacf
-        let MH_CIGAM_64: UInt32 = 0xcffaedfe
-        let FAT_MAGIC: UInt32 = 0xcafebabe
-        let FAT_CIGAM: UInt32 = 0xbebafeca
-
-        func readU32LE(_ offset: Int) -> UInt32 {
-            let slice = data[offset..<(offset+4)]
-            return slice.withContiguousStorageIfAvailable { buf in
-                return buf.baseAddress!.withMemoryRebound(to: UInt32.self, capacity: 1) { $0.pointee }
-            } ?? UInt32(littleEndian: data[offset..<(offset+4)].withUnsafeBytes { $0.load(as: UInt32.self) })
+    func architectureDetection(at url: URL) -> (architectures: [String], error: String?) {
+        guard let handle = try? FileHandle(forReadingFrom: url) else {
+            return ([], "Unable to read Mach-O header")
         }
-        func readU32BE(_ offset: Int) -> UInt32 {
-            return readU32LE(offset).byteSwapped
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: 4104) else {
+            return ([], "Unable to read Mach-O header")
+        }
+        return architectureDetection(in: data)
+    }
+
+    func detectArchitectures(in data: Data) -> [String] {
+        architectureDetection(in: data).architectures
+    }
+
+    private func architectureDetection(in data: Data) -> (architectures: [String], error: String?) {
+        let mhMagic: UInt32 = 0xfeedface
+        let mhCigam: UInt32 = 0xcefaedfe
+        let mhMagic64: UInt32 = 0xfeedfacf
+        let mhCigam64: UInt32 = 0xcffaedfe
+        let fatMagic: UInt32 = 0xcafebabe
+        let fatCigam: UInt32 = 0xbebafeca
+
+        func readU32LE(_ offset: Int) -> UInt32? {
+            guard offset >= 0, offset <= data.count - 4 else { return nil }
+            return UInt32(data[offset])
+                | UInt32(data[offset + 1]) << 8
+                | UInt32(data[offset + 2]) << 16
+                | UInt32(data[offset + 3]) << 24
         }
 
-        func mapCPUType(_ cputype: UInt32) -> String? {
-            let CPU_TYPE_X86_64: UInt32 = 0x01000007
-            let CPU_TYPE_ARM64: UInt32 = 0x0100000C
+        func readU32BE(_ offset: Int) -> UInt32? {
+            readU32LE(offset)?.byteSwapped
+        }
+
+        func mapCPUType(_ cputype: UInt32, _ cpusubtype: UInt32) -> String? {
+            let cpuTypeX8664: UInt32 = 0x01000007
+            let cpuTypeArm64: UInt32 = 0x0100000c
+            let cpuSubtypeMask: UInt32 = 0xff000000
+            let cpuSubtypeArm64e: UInt32 = 2
             switch cputype {
-            case CPU_TYPE_X86_64: return "x86_64"
-            case CPU_TYPE_ARM64: return "arm64"
-            default: return nil
+            case cpuTypeX8664:
+                return "x86_64"
+            case cpuTypeArm64:
+                return cpusubtype & ~cpuSubtypeMask == cpuSubtypeArm64e ? "arm64e" : "arm64"
+            default:
+                return nil
             }
         }
 
-        let magic = readU32LE(0)
-        if magic == FAT_MAGIC || magic == FAT_CIGAM {
-            let be = (magic == FAT_CIGAM)
-            let nfat = be ? readU32BE(4) : readU32BE(4) // nfat_arch is big-endian in both FAT_MAGIC/CIGAM
-            var archs: Set<String> = []
-            var offset = 8
-            for _ in 0..<Int(nfat) {
-                let cputypeBE = readU32BE(offset)
-                if let name = mapCPUType(cputypeBE) { archs.insert(name) }
-                offset += 20 // sizeof(fat_arch)
-            }
-            return Array(archs)
-        } else if magic == MH_MAGIC || magic == MH_MAGIC_64 {
-            // little endian headers
-            let cputype = readU32LE(4)
-            if let name = mapCPUType(cputype) { return [name] }
-        } else if magic == MH_CIGAM || magic == MH_CIGAM_64 {
-            // big endian headers
-            let cputype = readU32BE(4)
-            if let name = mapCPUType(cputype) { return [name] }
+        guard let magic = readU32LE(0) else {
+            return ([], "Truncated Mach-O header")
         }
-        return []
+        if magic == fatMagic || magic == fatCigam {
+            let read = magic == fatCigam ? readU32BE : readU32LE
+            guard let countValue = read(4), countValue <= 204 else {
+                return ([], "Malformed fat Mach-O header")
+            }
+            let count = Int(countValue)
+            guard count <= (data.count - 8) / 20 else {
+                return ([], "Truncated fat Mach-O header")
+            }
+            var architectures: [String] = []
+            for index in 0..<count {
+                let offset = 8 + index * 20
+                guard let cputype = read(offset), let cpusubtype = read(offset + 4) else {
+                    return ([], "Truncated fat Mach-O header")
+                }
+                if let name = mapCPUType(cputype, cpusubtype), !architectures.contains(name) {
+                    architectures.append(name)
+                }
+            }
+            return (architectures, nil)
+        }
+
+        let read: (Int) -> UInt32?
+        if magic == mhMagic || magic == mhMagic64 {
+            read = readU32LE
+        } else if magic == mhCigam || magic == mhCigam64 {
+            read = readU32BE
+        } else {
+            return ([], nil)
+        }
+        guard let cputype = read(4), let cpusubtype = read(8),
+              let name = mapCPUType(cputype, cpusubtype) else {
+            if read(4) == nil || read(8) == nil {
+                return ([], "Truncated Mach-O header")
+            }
+            return ([], nil)
+        }
+        return ([name], nil)
     }
 }
 

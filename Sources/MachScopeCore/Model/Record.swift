@@ -18,8 +18,11 @@ public struct Record: Codable, Sendable {
     public let signingAuthorities: [String]
     public let hardenedRuntime: Bool?
     public let signatureFlags: [String]
+    public let cdhash: String?
+    public let platformBinary: Bool
+    public let format: String?
     public let notarization: String?
-    public let entitlements: [String: Bool]
+    public let entitlements: [String: EntitlementValue]
     public let sandboxed: Bool?
     public let developerType: String?
     public let hasQuarantineXattr: Bool?
@@ -37,8 +40,11 @@ public struct Record: Codable, Sendable {
         signingAuthorities: [String] = [],
         hardenedRuntime: Bool? = nil,
         signatureFlags: [String] = [],
+        cdhash: String? = nil,
+        platformBinary: Bool = false,
+        format: String? = nil,
         notarization: String? = nil,
-        entitlements: [String: Bool] = [:],
+        entitlements: [String: EntitlementValue] = [:],
         sandboxed: Bool? = nil,
         developerType: String? = nil,
         hasQuarantineXattr: Bool? = nil,
@@ -55,6 +61,9 @@ public struct Record: Codable, Sendable {
         self.signingAuthorities = signingAuthorities
         self.hardenedRuntime = hardenedRuntime
         self.signatureFlags = signatureFlags
+        self.cdhash = cdhash
+        self.platformBinary = platformBinary
+        self.format = format
         self.notarization = notarization
         self.entitlements = entitlements
         self.sandboxed = sandboxed

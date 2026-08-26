@@ -11,8 +11,8 @@ import Testing
     @Test func rulesEngineCombinationJitAndNetwork() {
         let engine = RulesEngine()
         let ents = [
-            "com.apple.security.cs.allow-jit": true,
-            "com.apple.security.network.client": true
+            "com.apple.security.cs.allow-jit": EntitlementValue.bool(true),
+            "com.apple.security.network.client": EntitlementValue.bool(true)
         ]
         let findings = engine.evaluate(entitlements: ents, flags: ["runtime"], notarization: nil)
         #expect(findings.contains(where: { $0.id == "JIT_AND_NETWORK" }))

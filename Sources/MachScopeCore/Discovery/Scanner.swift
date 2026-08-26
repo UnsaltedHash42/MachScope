@@ -7,7 +7,7 @@ public final class Scanner {
         self.extractor = SignInfoExtractor(rulesEngine: rulesEngine)
     }
 
-    public func scan(urls: [URL], concurrency: Int = 8, assessmentEnabled: Bool = false) -> [Record] {
+    public func scan(urls: [URL], concurrency: Int = 8) -> [Record] {
         if urls.isEmpty { return [] }
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = max(1, concurrency)
@@ -18,7 +18,7 @@ public final class Scanner {
             queue.addOperation { [weak self] in
                 guard let self = self else { return }
                 let record = autoreleasepool(invoking: { () -> Record in
-                    return self.extractor.buildRecord(for: url, assessmentEnabled: assessmentEnabled)
+                    return self.extractor.buildRecord(for: url)
                 })
                 lock.lock()
                 records.append(record)
