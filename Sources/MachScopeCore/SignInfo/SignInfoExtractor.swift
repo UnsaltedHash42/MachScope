@@ -80,7 +80,7 @@ public struct SignInfoExtractor {
         let sandboxed = entitlements.values["com.apple.security.app-sandbox"]?.isTrue
         let notarization: String? = nil
         let engine = self.rulesEngine ?? RulesEngine.loadDefault()
-        let findings = engine.evaluate(entitlements: entitlements.values, flags: flags.flags, notarization: notarization, hardenedRuntime: flags.hardenedRuntime, hasQuarantine: quarantine)
+        let findings = engine.evaluate(entitlements: entitlements.values, flags: flags.flags, notarization: notarization, hasQuarantine: quarantine)
 
         let developerType = authorities.first.map { auth in
             if auth.contains("Apple Development") || auth.contains("Apple Distribution") { return "Apple" }
