@@ -1,5 +1,19 @@
 import Foundation
 
+public enum RiskBand: String, Codable, Sendable {
+    case none, low, medium, high, critical
+
+    init(score: Int) {
+        switch score {
+        case 0: self = .none
+        case 1...9: self = .low
+        case 10...29: self = .medium
+        case 30...59: self = .high
+        default: self = .critical
+        }
+    }
+}
+
 public struct Record: Codable, Sendable {
     public struct CertificateSummary: Codable, Sendable {
         public let subject: String
@@ -34,6 +48,8 @@ public struct Record: Codable, Sendable {
     public let hasQuarantineXattr: Bool?
     public let certificateChain: [CertificateSummary]
     public let findings: [Finding]
+    public let riskScore: Int
+    public let riskBand: RiskBand
     public let errors: [String]
 
     enum CodingKeys: String, CodingKey {
@@ -56,6 +72,8 @@ public struct Record: Codable, Sendable {
         case hasQuarantineXattr = "has_quarantine_xattr"
         case certificateChain = "certificate_chain"
         case findings
+        case riskScore = "risk_score"
+        case riskBand = "risk_band"
         case errors
     }
 
@@ -79,6 +97,7 @@ public struct Record: Codable, Sendable {
         hasQuarantineXattr: Bool? = nil,
         certificateChain: [CertificateSummary] = [],
         findings: [Finding] = [],
+        riskScore: Int = 0,
         errors: [String] = []
     ) {
         self.path = path
@@ -100,6 +119,8 @@ public struct Record: Codable, Sendable {
         self.hasQuarantineXattr = hasQuarantineXattr
         self.certificateChain = certificateChain
         self.findings = findings
+        self.riskScore = min(100, max(0, riskScore))
+        self.riskBand = RiskBand(score: self.riskScore)
         self.errors = errors
     }
 }

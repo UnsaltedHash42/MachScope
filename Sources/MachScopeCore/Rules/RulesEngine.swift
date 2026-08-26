@@ -93,6 +93,7 @@ public struct RulesEngine: Sendable {
     public let rules: [Rule]
     public let weights: Weights
     public let digest: String
+    private let ruleWeights: [String: Int]
 
     public init(
         rules: [Rule] = [],
@@ -101,12 +102,14 @@ public struct RulesEngine: Sendable {
         self.rules = rules
         self.weights = weights
         self.digest = Self.digest(for: Data())
+        self.ruleWeights = Self.makeRuleWeights(rules)
     }
 
     private init(rules: [Rule], weights: Weights, digest: String) {
         self.rules = rules
         self.weights = weights
         self.digest = digest
+        self.ruleWeights = Self.makeRuleWeights(rules)
     }
 
     public func evaluate(
@@ -137,6 +140,18 @@ public struct RulesEngine: Sendable {
                 ? Finding(id: rule.id, severity: rule.severity, reason: rule.reason)
                 : nil
         }
+    }
+
+    public func riskScore(for findings: [Finding]) -> Int {
+        var score = 0
+        for finding in findings {
+            let weight = ruleWeights[finding.id] ?? weights.value(for: finding.severity)
+            if weight >= 100 - score {
+                return 100
+            }
+            score += weight
+        }
+        return score
     }
 
     public static func loadDefault() -> RulesEngine {
@@ -174,6 +189,14 @@ public struct RulesEngine: Sendable {
     private static func digest(for data: Data) -> String {
         let hex = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         return "sha256:\(hex)"
+    }
+
+    private static func makeRuleWeights(_ rules: [Rule]) -> [String: Int] {
+        var result: [String: Int] = [:]
+        for rule in rules {
+            result[rule.id] = rule.weight
+        }
+        return result
     }
 }
 
