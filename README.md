@@ -164,7 +164,7 @@ The packaged YAML ruleset is the only source of findings. `machscope rules` list
 
 ## Performance
 
-On an Apple M5 Max running macOS 26.5, a release build scanned 940 records under `/Applications` in a median 4.34 seconds with `--concurrency 8` across five runs. Security.framework calls are capped at four under [ADR-0004](docs/adr/0004-the-security-api-cap-is-four.md); `--concurrency` values above four do not change throughput measurably.
+On an Apple M5 Max running macOS 26.6, a release build scanned 940 records under `/Applications` in a median 4.34 seconds with `--concurrency 8` across five runs. Security.framework calls are capped at four under [ADR-0004](docs/adr/0004-the-security-api-cap-is-four.md); `--concurrency` values above four do not change throughput measurably.
 
 ## Limits
 

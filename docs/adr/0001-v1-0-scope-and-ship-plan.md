@@ -13,7 +13,7 @@ suite, and its JSON output is meant to be consumed by a downstream bounty harnes
 output shape becomes an API the moment v1.0 is tagged.
 
 A recon pass on 2026-08-26 measured the tree against `codesign` ground truth on this
-workstation (macOS 26.5, Swift 6.3.3, Command Line Tools only). Fifteen defects were verified
+workstation (macOS 26.6, Swift 6.3.3, Command Line Tools only). Fifteen defects were verified
 by running, not by reading. The load-bearing ones:
 
 **The core extraction returns nothing.** `machscope scan

@@ -30,7 +30,7 @@ Neither path is on SwiftPM's default search path, so `import Testing` fails out 
 and adding only the framework search path gets a bundle that links but cannot `dlopen` —
 `Testing` resolves, then `@rpath/lib_TestingInterop.dylib` does not.
 
-Verified working on 2026-08-26 (Swift 6.3.3, macOS 26.5, CLT-only), on a throwaway package with
+Verified working on 2026-08-26 (Swift 6.3.3, macOS 26.6, CLT-only), on a throwaway package with
 one `@Test`:
 
 ```sh
