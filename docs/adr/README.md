@@ -23,6 +23,7 @@ Records in this repo:
 |---|---|---|
 | [0001](0001-v1-0-scope-and-ship-plan.md) | MachScope v1.0 scope and ship plan | Accepted |
 | [0002](0002-tests-run-without-xcode.md) | Tests run on Command Line Tools, without Xcode | Accepted |
+| [0003](0003-assessment-is-disabled-until-the-bridge-is-correct.md) | Gatekeeper assessment is disabled until the bridge calls the real API | Accepted |
 
 Conventions:
 
