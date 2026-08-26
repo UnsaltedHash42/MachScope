@@ -166,3 +166,7 @@ On an Apple M5 Max running macOS 26.5, a debug build scanned 940 records under `
 - It does not validate signatures or code seals.
 - It does not report notarization in v1.0.
 - It does not follow symbolic links.
+
+## License
+
+[MIT](LICENSE)
