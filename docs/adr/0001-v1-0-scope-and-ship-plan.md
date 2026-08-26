@@ -184,9 +184,12 @@ Rules that hold for the whole document:
   is, and requires an ADR.
 - **Absent means unknown.** An optional field is omitted when it has no value. Explicit `null`
   is never emitted, so a consumer has one case to handle, not two.
-- **Records are sorted by `path`** before emit. Two scans of the same tree produce
-  byte-identical JSON given the same ruleset and tool version. This is what makes a golden test
-  possible and diffs meaningful.
+- **Records are sorted by `path`** before emit. Two scans of the same tree produce a
+  byte-identical `records` array given the same ruleset and tool version. This is what makes a
+  golden test possible and diffs meaningful. *(Corrected 2026-08-26: this clause first said
+  byte-identical JSON. The envelope carries `started_at` and `duration_ms`, which change every
+  run by design, so determinism is a property of `records`, and the golden fixture holds that
+  array alone.)*
 - **`rules_digest` is a SHA-256 over the loaded ruleset**, so a score or a finding set is
   attributable to a specific ruleset, including a custom `--rules` file.
 - **stdout carries JSON and nothing else.** Progress, timing, and warnings go to stderr, so
@@ -276,8 +279,8 @@ evaluation is where the parallelism belongs.
 v1.0 is tagged when, and only when: `make test` is green; `machscope scan` on a Developer ID
 app reports the same entitlements, team ID, and flags that `codesign` reports for it; the
 default ruleset loads with all of its rules; no input crashes the scanner, the malformed-fat
-fixture and `--assessment` included; two consecutive scans of `/Applications` produce
-byte-identical JSON; every README claim is true of
+fixture and `--assessment` included; two consecutive scans of `/Applications` produce a
+byte-identical `records` array; every README claim is true of
 the built binary; a LICENSE file exists; and no corp identifier, customer name, or internal path
 appears anywhere in the tree.
 
