@@ -10,15 +10,19 @@ public struct BundleIntrospector {
     }
 
     public func findContainingBundle(for url: URL) -> URL? {
-        var current = url
+        var currentPath = url.standardizedFileURL.path
         let fm = FileManager.default
         while true {
-            if current.pathExtension.lowercased() == "app", fm.fileExists(atPath: current.appendingPathComponent("Contents/Info.plist").path) {
-                return current
+            let current = currentPath as NSString
+            if current.pathExtension.lowercased() == "app" {
+                let plistPath = current.appendingPathComponent("Contents/Info.plist")
+                if fm.fileExists(atPath: plistPath) {
+                    return URL(fileURLWithPath: currentPath)
+                }
             }
-            let parent = current.deletingLastPathComponent()
-            if parent.path == current.path { return nil }
-            current = parent
+            let parent = current.deletingLastPathComponent
+            if parent.isEmpty || parent == currentPath { return nil }
+            currentPath = parent
         }
     }
 }
