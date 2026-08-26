@@ -51,11 +51,16 @@ array, so nothing in an output file identifies which MachScope or which ruleset 
 `certificate_chain[].sha256` is not a SHA-256; it is the first 64 bytes of
 `SecCertificateCopyNormalizedSubjectSequence`, hex-encoded (`SecBridge.m:73-81`).
 
-**Rules live in two places, and both fire.** Five entitlements are checked in
+**Rules live in two places, and the second one never loads.** Five entitlements are checked in
 `RulesEngine.evaluate` with stable IDs (`DLV`, `DYLD_ENV`, `UNSIGNED_EXEC_MEM`, `ALLOW_JIT`,
 `GET_TASK_ALLOW`) *and* in `DefaultRules.yml`, where the finding ID is the raw entitlement
-string. With the default ruleset loaded, one JIT entitlement produces two findings under two
-different IDs. `CLAUDE.md` states the opposite as a repo rule: "A new dangerous-entitlement
+string. The YAML is dead code: `Package.swift:26` declares the resource with `.process`, which
+flattens it to the bundle root, while `RulesEngine.loadDefault` asks for it with
+`subdirectory: "Rules"`, gets nil, and returns an engine with zero rules. Verified —
+`DefaultRules.yml` sits at `.build/…/MachScope_MachScopeCore.bundle/DefaultRules.yml`, not under
+`Rules/`. **None of the 18 packaged rules has ever fired.** The duplication is therefore latent
+rather than visible: point `--rules` at the file by hand and one JIT entitlement produces two
+findings under two different IDs. `CLAUDE.md` states the opposite as a repo rule: "A new dangerous-entitlement
 check is a rule, not an `if`." Combination rules (`JIT_AND_NETWORK`, `GTA_NO_HARDENED`) cannot
 be expressed in YAML at all, so they have nowhere to go but the hardcoded block.
 
@@ -65,7 +70,15 @@ path is still `args.first`, `parseFlags` sees a token that does not start with `
 returns immediately. The README's own example, `machscope quick /Applications --json`, is wrong
 twice over: the flag is never read, and `--json` is not a flag `parseFlags` knows in any case.
 A `--rules` file that fails to load falls back to the defaults in silence
-(`main.swift:59,87`).
+(`main.swift:59,87`) — which, given the above, means falling back to nothing.
+
+**Two inputs kill the process.** A malformed fat header — the eight bytes `ca fe ba be ff ff ff
+ff` — carries `MachOMagic.detectArchitectures` (`MachOMagic.swift:46-76`) through an unchecked
+`nfat_arch` count into out-of-bounds `Data` subscripts: SIGTRAP, exit 133, no output.
+`--assessment` segfaults inside `SecAssessmentCopyResult` on every binary tried, `/bin/ls`
+included: exit 139, no output. A scanner a hostile file can kill, and a flag that kills it on
+well-formed input, are both blockers for a tool whose whole job is to be pointed at binaries
+nobody trusts.
 
 **`make test` does not run.** `error: no such module 'XCTest'` — no Xcode on this box, and
 Command Line Tools ships no `XCTest.framework`. See [ADR-0002](0002-tests-run-without-xcode.md).
@@ -110,6 +123,10 @@ The record must say what `codesign -dv --entitlements -` says about the same bin
   which already works. The field currently called `sha256` is either a real SHA-256 of the
   certificate DER or is renamed to what it is. It is not shipped under a name that lies.
 - `arm64e` is distinguished from `arm64` by cpusubtype.
+- Notarization means the stapled ticket, not an execution assessment. `codesign` reports
+  `Notarization Ticket=stapled` for Chrome; MachScope omits the field by default and crashes
+  when asked for it. Whatever replaces `SecAssessmentCopyResult` reports what it measured and
+  does not take the process down.
 - `cdhash`, `platform_binary`, and the `format` string are added to the record. They are cheap
   (already in the dictionary) and they are what a triager asks for next.
 
@@ -125,6 +142,11 @@ of rules, and it grows the two things the hardcoded block could express and it c
 - **Combination rules.** A rule may match on more than one condition — several entitlements, a
   signature flag, an absent flag, an entitlement value. `JIT_AND_NETWORK` and `GTA_NO_HARDENED`
   become YAML like everything else.
+
+**The default ruleset actually loads.** Either the `.process` declaration or the
+`subdirectory: "Rules"` lookup changes, and a test asserts the default engine is non-empty. The
+defect class worth naming: a ruleset that silently degrades to zero rules is indistinguishable
+from a clean scan.
 
 A `--rules` file that fails to parse is a fatal error with the parse position, never a silent
 fallback to the defaults. The hand-rolled line scanner is replaced by a parser that handles the
@@ -206,6 +228,10 @@ evaluation is where the parallelism belongs.
   the gate exists because Security.framework misbehaves under load, that is a fact worth
   writing down rather than a limit worth quietly deleting. The dead
   `DispatchSemaphore(value: 1)` in `Assessment` goes.
+- **Malformed input does not crash the scanner.** Every read of a Mach-O header is bounds
+  checked against the file length before it happens — the fat `nfat_arch` count, each `fat_arch`
+  entry, the thin header's cputype and cpusubtype. The `ca fe ba be ff ff ff ff` fixture is a
+  test case.
 - **No abort on a bad file.** An unreadable or malformed file produces a record with `errors`
   populated. The scan finishes.
 - **Progress on stderr** under `--verbose`, at an interval, not per file.
@@ -217,7 +243,12 @@ evaluation is where the parallelism belongs.
 
 - `quick <path>` consumes its path, so its flags are read. `quick` becomes what it claims to
   be: `scan` with a fixed set of defaults, sharing one code path and one flag parser.
-- An unknown flag is an error, not a silent no-op.
+- An unknown flag is an error, not a silent no-op. `--assessment` and `--bundle-mains-only`
+  are undocumented today; every flag is documented or removed.
+- `--follow-symlinks` either follows symlinks or goes. Today it suppresses a skip branch and
+  never resolves one (`FileWalker.swift:56-83`).
+- `--format both` without `--out` currently prints JSON, a `--- HTML ---` marker, and HTML into
+  one stream, which is neither format. Under W3, stdout carries one.
 - `--version`, `--help`, and a usage string that matches the flags that exist.
 - **Exit codes are a contract**, because a harness reads them: `0` clean, `1` findings at or
   above the `--fail-on` threshold (default: never), `2` usage error, `3` scan error. A scan
@@ -243,8 +274,10 @@ evaluation is where the parallelism belongs.
 ### Ship gate
 
 v1.0 is tagged when, and only when: `make test` is green; `machscope scan` on a Developer ID
-app reports the same entitlements, team ID, and flags that `codesign` reports for it; two
-consecutive scans of `/Applications` produce byte-identical JSON; every README claim is true of
+app reports the same entitlements, team ID, and flags that `codesign` reports for it; the
+default ruleset loads with all of its rules; no input crashes the scanner, the malformed-fat
+fixture and `--assessment` included; two consecutive scans of `/Applications` produce
+byte-identical JSON; every README claim is true of
 the built binary; a LICENSE file exists; and no corp identifier, customer name, or internal path
 appears anywhere in the tree.
 
@@ -267,6 +300,9 @@ appears anywhere in the tree.
 
 ## Consequences
 
+- **Eighteen rules come alive at once.** The packaged ruleset has never executed, so its
+  severities and reasons have never been reviewed against real output. They get read before the
+  tag, not after.
 - **Findings appear where there were none.** A user upgrading from the pre-release binary will
   see entitlement findings on binaries that previously reported clean. Those binaries did not
   change. This is the headline of the release notes, not a footnote.
