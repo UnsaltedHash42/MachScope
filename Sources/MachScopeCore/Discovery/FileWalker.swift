@@ -5,14 +5,12 @@ public struct FileWalker {
         public let root: URL
         public let excludes: [String]
         public let maxDepth: Int
-        public let followSymlinks: Bool
         public let bundleMainsOnly: Bool
 
-        public init(root: URL, excludes: [String] = [], maxDepth: Int = .max, followSymlinks: Bool = false, bundleMainsOnly: Bool = false) {
+        public init(root: URL, excludes: [String] = [], maxDepth: Int = .max, bundleMainsOnly: Bool = false) {
             self.root = root
             self.excludes = excludes
             self.maxDepth = maxDepth
-            self.followSymlinks = followSymlinks
             self.bundleMainsOnly = bundleMainsOnly
         }
     }
@@ -25,9 +23,19 @@ public struct FileWalker {
 
         func isExcluded(_ path: String) -> Bool {
             guard !options.excludes.isEmpty else { return false }
+            let components = path.split(separator: "/")
             for ex in options.excludes {
-                if path.hasPrefix(ex) { return true }
-                if path.contains(ex) { return true }
+                let normalized = ex.count > 1 && ex.hasSuffix("/")
+                    ? String(ex.dropLast())
+                    : ex
+                if normalized.isEmpty { continue }
+                if path == normalized || path.hasPrefix(normalized + "/") {
+                    return true
+                }
+                if !normalized.contains("/"),
+                   components.contains(where: { $0 == normalized }) {
+                    return true
+                }
             }
             return false
         }
@@ -58,7 +66,7 @@ public struct FileWalker {
                 let childPath = child.path
                 if isExcluded(childPath) { e.skipDescendants(); continue }
                 if let vals = try? child.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey, .isRegularFileKey]) {
-                    if vals.isSymbolicLink == true && !options.followSymlinks {
+                    if vals.isSymbolicLink == true {
                         e.skipDescendants();
                         continue
                     }

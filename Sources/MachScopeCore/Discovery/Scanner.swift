@@ -7,12 +7,17 @@ public final class Scanner {
         self.extractor = SignInfoExtractor(rulesEngine: rulesEngine)
     }
 
-    public func scan(urls: [URL], concurrency: Int = 8) -> [Record] {
+    public func scan(
+        urls: [URL],
+        concurrency: Int = 8,
+        progress: ((Int, Int) -> Void)? = nil
+    ) -> [Record] {
         if urls.isEmpty { return [] }
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = max(1, concurrency)
         let lock = NSLock()
         var indexedRecords: [(Int, Record)] = []
+        var lastProgress = Date()
 
         for (index, url) in urls.enumerated() {
             queue.addOperation { [weak self] in
@@ -20,9 +25,20 @@ public final class Scanner {
                 let record = autoreleasepool(invoking: { () -> Record in
                     return self.extractor.buildRecord(for: url)
                 })
+                var progressCount: Int?
                 lock.lock()
                 indexedRecords.append((index, record))
+                let completed = indexedRecords.count
+                let now = Date()
+                if progress != nil,
+                   completed % 500 == 0 || now.timeIntervalSince(lastProgress) >= 2 {
+                    lastProgress = now
+                    progressCount = completed
+                }
                 lock.unlock()
+                if let progressCount {
+                    progress?(progressCount, urls.count)
+                }
             }
         }
         queue.waitUntilAllOperationsAreFinished()
