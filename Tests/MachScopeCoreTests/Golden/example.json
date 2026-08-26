@@ -1,16 +1,99 @@
 [
   {
-    "path": "/usr/bin/ls",
-    "bundle_id": "",
-    "binary_type": "exec",
-    "arch": [],
-    "team_id": "",
-    "signing_authorities": [],
-    "hardened_runtime": false,
-    "signature_flags": [],
-    "notarization": "",
-    "entitlements": {},
-    "findings": [],
-    "errors": []
+    "arch" : [
+
+    ],
+    "certificate_chain" : [
+
+    ],
+    "entitlements" : {
+
+    },
+    "errors" : [
+
+    ],
+    "findings" : [
+
+    ],
+    "path" : "\/fixtures\/clean",
+    "platform_binary" : false,
+    "risk_band" : "none",
+    "risk_score" : 0,
+    "signature_flags" : [
+
+    ],
+    "signing_authorities" : [
+
+    ]
+  },
+  {
+    "arch" : [
+      "arm64"
+    ],
+    "binary_type" : "exec",
+    "bundle_id" : "com.example.risky",
+    "cdhash" : "0123456789abcdef",
+    "certificate_chain" : [
+      {
+        "subject" : "Digest unavailable"
+      }
+    ],
+    "developer_type" : "Developer ID",
+    "entitlements" : {
+      "array" : [
+        "one",
+        2
+      ],
+      "bool" : true,
+      "com.apple.private.security.storage.AppBundles" : true,
+      "data" : {
+        "data_bytes" : 3
+      },
+      "dictionary" : {
+        "nested" : false
+      },
+      "double" : 1.5,
+      "int" : 7,
+      "string" : "value",
+      "unknown" : {
+        "unknown" : true
+      }
+    },
+    "errors" : [
+
+    ],
+    "findings" : [
+      {
+        "id" : "CRITICAL",
+        "reason" : "Critical fixture",
+        "severity" : "critical"
+      },
+      {
+        "id" : "LOW_ONE",
+        "reason" : "First low fixture",
+        "severity" : "low"
+      },
+      {
+        "id" : "LOW_TWO",
+        "reason" : "Second low fixture",
+        "severity" : "low"
+      }
+    ],
+    "format" : "Mach-O 64-bit",
+    "hardened_runtime" : true,
+    "has_quarantine_xattr" : false,
+    "path" : "\/fixtures\/risky",
+    "platform_binary" : false,
+    "risk_band" : "high",
+    "risk_score" : 42,
+    "sandboxed" : false,
+    "signature_flags" : [
+      "runtime"
+    ],
+    "signing_authorities" : [
+      "Example Authority"
+    ],
+    "signing_identifier" : "com.example.risky",
+    "team_id" : "EXAMPLETEAM"
   }
 ]

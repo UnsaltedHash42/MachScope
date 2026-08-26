@@ -30,14 +30,53 @@ import Testing
         #expect(object["records"] is [[String: Any]])
     }
 
-    @Test func entitlementNamesPreserveUppercaseBytes() throws {
-        let key = "com.apple.private.security.storage.AppBundles"
-        let record = Record(path: "/tmp/example", entitlements: [key: .bool(true)])
-        let data = try JSONWriter().writeRecords([record])
-        let array = try #require(
-            JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+    @Test func recordsMatchGoldenFixture() throws {
+        let actual = try JSONWriter().writeRecords(fixtureRecords())
+        let fixtureURL = try #require(
+            Bundle.module.url(forResource: "example", withExtension: "json")
         )
-        let entitlements = try #require(array.first?["entitlements"] as? [String: Any])
-        #expect(entitlements[key] as? Bool == true)
+        let expected = try Data(contentsOf: fixtureURL)
+        #expect(actual == expected)
+    }
+
+    private func fixtureRecords() -> [Record] {
+        let findings = [
+            Finding(id: "CRITICAL", severity: .critical, reason: "Critical fixture"),
+            Finding(id: "LOW_ONE", severity: .low, reason: "First low fixture"),
+            Finding(id: "LOW_TWO", severity: .low, reason: "Second low fixture")
+        ]
+        return [
+            Record(path: "/fixtures/clean"),
+            Record(
+                path: "/fixtures/risky",
+                bundleId: "com.example.risky",
+                binaryType: "exec",
+                arch: ["arm64"],
+                teamId: "EXAMPLETEAM",
+                signingIdentifier: "com.example.risky",
+                signingAuthorities: ["Example Authority"],
+                hardenedRuntime: true,
+                signatureFlags: ["runtime"],
+                cdhash: "0123456789abcdef",
+                format: "Mach-O 64-bit",
+                entitlements: [
+                    "array": .array([.string("one"), .int(2)]),
+                    "bool": .bool(true),
+                    "com.apple.private.security.storage.AppBundles": .bool(true),
+                    "data": .data(3),
+                    "dictionary": .dictionary(["nested": .bool(false)]),
+                    "double": .double(1.5),
+                    "int": .int(7),
+                    "string": .string("value"),
+                    "unknown": .unknown
+                ],
+                sandboxed: false,
+                developerType: "Developer ID",
+                hasQuarantineXattr: false,
+                certificateChain: [.init(subject: "Digest unavailable")],
+                findings: findings,
+                riskScore: 42
+            )
+        ]
     }
 }
