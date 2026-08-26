@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 public struct RulesEngine: Sendable {
     public struct Weights: Sendable, Equatable {
@@ -91,6 +92,7 @@ public struct RulesEngine: Sendable {
 
     public let rules: [Rule]
     public let weights: Weights
+    public let digest: String
 
     public init(
         rules: [Rule] = [],
@@ -98,6 +100,13 @@ public struct RulesEngine: Sendable {
     ) {
         self.rules = rules
         self.weights = weights
+        self.digest = Self.digest(for: Data())
+    }
+
+    private init(rules: [Rule], weights: Weights, digest: String) {
+        self.rules = rules
+        self.weights = weights
+        self.digest = digest
     }
 
     public func evaluate(
@@ -144,7 +153,12 @@ public struct RulesEngine: Sendable {
 
     public static func load(fromYAMLData data: Data) throws -> RulesEngine {
         var parser = try Parser(data: data)
-        return try parser.parse()
+        let engine = try parser.parse()
+        return RulesEngine(
+            rules: engine.rules,
+            weights: engine.weights,
+            digest: digest(for: data)
+        )
     }
 
     public static func load(fromFilePath path: String) throws -> RulesEngine {
@@ -155,6 +169,11 @@ public struct RulesEngine: Sendable {
         } catch {
             throw LoadError(message: "unable to read rules file \(path): \(error.localizedDescription)")
         }
+    }
+
+    private static func digest(for data: Data) -> String {
+        let hex = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        return "sha256:\(hex)"
     }
 }
 

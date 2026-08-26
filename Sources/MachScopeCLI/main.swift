@@ -58,6 +58,8 @@ guard let sub = args.first else { printUsage(); exit(1) }
 _ = args.removeFirst()
 
 switch sub {
+case "--version":
+    print(MachScopeVersion.current)
 case "rules":
     var config = CLIConfig()
     parseFlags(&args, into: &config)
@@ -71,15 +73,24 @@ case "quick":
     _ = args.dropFirst() // path consumed
     parseFlags(&args, into: &config)
     let root = URL(fileURLWithPath: path)
+    let startedAt = Date()
     let files = FileWalker().enumeratePaths(options: .init(root: root, excludes: ["/System", "/Library"], maxDepth: 8, followSymlinks: config.followSymlinks))
     if config.verbose { fputs("Found \(files.count) files. Scanning with concurrency=8...\n", stderr) }
-    let start = Date()
     let rulesEngine = loadRules(at: config.rulesPath)
     let records = Scanner(rulesEngine: rulesEngine).scan(urls: files, concurrency: 8)
-    if config.verbose { fputs("Scan completed in \(String(format: "%.2f", Date().timeIntervalSince(start)))s\n", stderr) }
+    let durationMs = Int(Date().timeIntervalSince(startedAt) * 1_000)
+    if config.verbose { fputs("Scan completed in \(String(format: "%.2f", Double(durationMs) / 1_000))s\n", stderr) }
     switch config.format.lowercased() {
     case "json":
-        let data = try JSONWriter().write(records: records)
+        let report = ScanReport(
+            root: root.path,
+            startedAt: startedAt,
+            durationMs: durationMs,
+            filesSeen: files.count,
+            rulesDigest: rulesEngine.digest,
+            records: records
+        )
+        let data = try JSONWriter().write(report: report)
         if let out = config.outDir {
             try FileManager.default.createDirectory(atPath: out, withIntermediateDirectories: true)
             try data.write(to: URL(fileURLWithPath: out).appendingPathComponent("report.json"))
@@ -100,23 +111,36 @@ case "scan":
     _ = args.removeFirst()
     var config = CLIConfig()
     parseFlags(&args, into: &config)
+    if config.format == "both" && config.outDir == nil {
+        fputs("error: --format both requires --out DIR\n", stderr)
+        exit(2)
+    }
     if config.assessment {
-        fputs("Assessment is unavailable pending a follow-up ADR.\n", stderr)
+        fputs("Assessment is unavailable; see docs/adr/0003-assessment-is-disabled-until-the-bridge-is-correct.md.\n", stderr)
     }
     let root = URL(fileURLWithPath: path)
+    let startedAt = Date()
     let files = FileWalker().enumeratePaths(options: .init(root: root, excludes: config.exclude, maxDepth: config.maxDepth, followSymlinks: config.followSymlinks, bundleMainsOnly: config.bundleMainsOnly))
     let rulesEngine = loadRules(at: config.rulesPath)
     if config.verbose {
         fputs("Found \(files.count) files. Scanning with concurrency=\(config.concurrency)...\n", stderr)
     }
-    let start = Date()
     let records = Scanner(rulesEngine: rulesEngine).scan(urls: files, concurrency: config.concurrency)
+    let durationMs = Int(Date().timeIntervalSince(startedAt) * 1_000)
     if config.verbose {
-        fputs("Scan completed in \(String(format: "%.2f", Date().timeIntervalSince(start)))s\n", stderr)
+        fputs("Scan completed in \(String(format: "%.2f", Double(durationMs) / 1_000))s\n", stderr)
     }
+    let report = ScanReport(
+        root: root.path,
+        startedAt: startedAt,
+        durationMs: durationMs,
+        filesSeen: files.count,
+        rulesDigest: rulesEngine.digest,
+        records: records
+    )
     switch config.format {
     case "json":
-        let data = try JSONWriter().write(records: records)
+        let data = try JSONWriter().write(report: report)
         if let out = config.outDir {
             try FileManager.default.createDirectory(atPath: out, withIntermediateDirectories: true)
             try data.write(to: URL(fileURLWithPath: out).appendingPathComponent("report.json"))
@@ -133,16 +157,12 @@ case "scan":
         }
     default:
         // both
-        let data = try JSONWriter().write(records: records)
+        let data = try JSONWriter().write(report: report)
         let html = HTMLReport().render(records: records)
         if let out = config.outDir {
             try FileManager.default.createDirectory(atPath: out, withIntermediateDirectories: true)
             try data.write(to: URL(fileURLWithPath: out).appendingPathComponent("report.json"))
             try html.data(using: .utf8)!.write(to: URL(fileURLWithPath: out).appendingPathComponent("report.html"))
-        } else {
-            print(String(data: data, encoding: .utf8) ?? "{}")
-            print("\n\n--- HTML ---\n\n")
-            print(html)
         }
     }
 default:

@@ -5,7 +5,14 @@ import Testing
 @Suite struct ParserTests {
     @Test func jsonWriterEncodesEmptyRecords() throws {
         let writer = JSONWriter()
-        let data = try writer.write(records: [])
+        let data = try writer.write(report: ScanReport(
+            root: "/tmp",
+            startedAt: Date(timeIntervalSince1970: 0),
+            durationMs: 0,
+            filesSeen: 0,
+            rulesDigest: RulesEngine.loadDefault().digest,
+            records: []
+        ))
         #expect(data.count > 0)
     }
 

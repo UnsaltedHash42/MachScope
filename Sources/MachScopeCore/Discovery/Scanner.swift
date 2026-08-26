@@ -12,21 +12,26 @@ public final class Scanner {
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = max(1, concurrency)
         let lock = NSLock()
-        var records: [Record] = []
+        var indexedRecords: [(Int, Record)] = []
 
-        for url in urls {
+        for (index, url) in urls.enumerated() {
             queue.addOperation { [weak self] in
                 guard let self = self else { return }
                 let record = autoreleasepool(invoking: { () -> Record in
                     return self.extractor.buildRecord(for: url)
                 })
                 lock.lock()
-                records.append(record)
+                indexedRecords.append((index, record))
                 lock.unlock()
             }
         }
         queue.waitUntilAllOperationsAreFinished()
-        return records
+        return indexedRecords.sorted { lhs, rhs in
+            if lhs.1.path == rhs.1.path {
+                return lhs.0 < rhs.0
+            }
+            return lhs.1.path.utf8.lexicographicallyPrecedes(rhs.1.path.utf8)
+        }.map(\.1)
     }
 }
 

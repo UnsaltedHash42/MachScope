@@ -9,6 +9,12 @@ public struct Finding: Codable, Sendable {
     public let severity: Severity
     public let reason: String
 
+    enum CodingKeys: String, CodingKey {
+        case id
+        case severity
+        case reason
+    }
+
     public init(id: String, severity: Severity, reason: String) {
         self.id = id
         self.severity = severity
