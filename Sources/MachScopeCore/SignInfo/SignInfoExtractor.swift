@@ -83,7 +83,13 @@ public struct SignInfoExtractor {
         let sandboxed = entitlements.values["com.apple.security.app-sandbox"]?.isTrue
         let notarization: String? = nil
         let engine = self.rulesEngine ?? RulesEngine.loadDefault()
-        let findings = engine.evaluate(entitlements: entitlements.values, flags: flags.flags, notarization: notarization, hasQuarantine: quarantine)
+        let findings = engine.evaluate(
+            entitlements: entitlements.values,
+            flags: flags.flags,
+            notarization: notarization,
+            hasQuarantine: quarantine,
+            platformBinary: platformBinary
+        )
         let riskScore = engine.riskScore(for: findings)
 
         let developerType = authorities.first.map { auth in
@@ -107,6 +113,7 @@ public struct SignInfoExtractor {
             format: signingFormat,
             notarization: notarization,
             entitlements: entitlements.values,
+            entitlementsDerOnly: entitlements.derOnlyKeys,
             sandboxed: sandboxed,
             developerType: developerType,
             hasQuarantineXattr: quarantine,
@@ -127,5 +134,4 @@ public struct SignInfoExtractor {
         }
     }
 }
-
 

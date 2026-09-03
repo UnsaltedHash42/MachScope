@@ -8,6 +8,26 @@ import Testing
         #expect(engine.rules.count == 24)
     }
 
+    @Test func defaultRulesUseAcceptedClassifications() {
+        let actual = Dictionary(
+            uniqueKeysWithValues: RulesEngine.loadDefault().rules.map { ($0.id, $0.classification) }
+        )
+        let weakening: Set<String> = [
+            "GET_TASK_ALLOW", "GTA_NO_HARDENED", "DLV", "DYLD_ENV",
+            "UNSIGNED_EXEC_MEM", "ALLOW_JIT", "JIT_AND_NETWORK", "FILES_ALL",
+            "ADHOC_SIGNING", "NO_HARDENED_RUNTIME", "NOTARIZATION_REJECTED"
+        ]
+        let capability: Set<String> = [
+            "APPLE_EVENTS", "DEVICE_CAMERA", "DEVICE_MICROPHONE", "PII_ADDRESSBOOK",
+            "PII_CALENDARS", "PII_LOCATION", "PII_PHOTOS", "NETWORK_CLIENT",
+            "NETWORK_SERVER", "FILES_USER_SELECTED_RW", "FILES_DOWNLOADS_RW", "PRINT"
+        ]
+
+        #expect(Set(actual.filter { $0.value == .weakening }.map { $0.key }) == weakening)
+        #expect(Set(actual.filter { $0.value == .capability }.map { $0.key }) == capability)
+        #expect(Set(actual.filter { $0.value == .provenance }.map { $0.key }) == ["QUARANTINE_PRESENT"])
+    }
+
     @Test func emptyRecordProducesNoFindings() {
         let findings = RulesEngine.loadDefault().evaluate(
             entitlements: [:],
@@ -39,6 +59,53 @@ import Testing
         let critical = scoringFindings()[0]
 
         #expect(engine.riskScore(for: [critical, critical, critical]) == 100)
+    }
+
+    @Test func riskScoreIgnoresCapabilityAndProvenanceFindings() {
+        let engine = scoringEngine()
+        let findings = [
+            Finding(
+                id: "CRITICAL",
+                severity: .critical,
+                classification: .weakening,
+                reason: "Critical"
+            ),
+            Finding(
+                id: "LOW_ONE",
+                severity: .low,
+                classification: .capability,
+                reason: "Capability"
+            ),
+            Finding(
+                id: "LOW_TWO",
+                severity: .low,
+                classification: .provenance,
+                reason: "Provenance"
+            )
+        ]
+
+        #expect(engine.riskScore(for: findings) == 40)
+    }
+
+    @Test func platformBinariesDoNotProduceNoHardenedRuntime() {
+        let engine = RulesEngine.loadDefault()
+        let platform = engine.evaluate(
+            entitlements: [:],
+            flags: [],
+            notarization: nil,
+            hasQuarantine: false,
+            platformBinary: true
+        )
+        let thirdParty = engine.evaluate(
+            entitlements: [:],
+            flags: [],
+            notarization: nil,
+            hasQuarantine: false,
+            platformBinary: false
+        )
+
+        #expect(platform.contains { $0.id == "NO_HARDENED_RUNTIME" } == false)
+        #expect(thirdParty.contains { $0.id == "NO_HARDENED_RUNTIME" })
     }
 
     @Test func riskBandsUsePublishedThresholds() {
@@ -94,7 +161,8 @@ import Testing
                 entitlements: context.entitlements,
                 flags: Array(context.flags),
                 notarization: context.notarization,
-                hasQuarantine: context.hasQuarantine
+                hasQuarantine: context.hasQuarantine,
+                platformBinary: context.platformBinary
             )
             #expect(
                 findings.contains { $0.id == rule.id },
@@ -129,6 +197,7 @@ import Testing
         rules:
           - id: VALUE_MATCH
             severity: high
+            class: capability
             reason: Value predicates match
             weight: 9
             all:
@@ -142,6 +211,7 @@ import Testing
                 present: false
           - id: EITHER_FLAG
             severity: low
+            class: weakening
             reason: Any condition matches
             any:
               - flag: adhoc
@@ -151,6 +221,7 @@ import Testing
         """
         let engine = try RulesEngine.load(fromYAMLData: Data(yaml.utf8))
         #expect(engine.rules[0].weight == 9)
+        #expect(engine.rules[0].classification == .capability)
         let valueFindings = engine.evaluate(
             entitlements: [
                 "enabled": .bool(true),
@@ -169,6 +240,25 @@ import Testing
             hasQuarantine: false
         )
         #expect(anyFindings.contains { $0.id == "EITHER_FLAG" })
+    }
+
+    @Test func legacyRulesWithoutClassDefaultToWeakening() throws {
+        let yaml = """
+        version: 2
+        weights: { low: 1, medium: 5, high: 15, critical: 40 }
+        rules:
+          - id: LEGACY
+            severity: medium
+            reason: Legacy rule
+            all:
+              - flag: runtime
+                present: true
+        """
+
+        let rule = try #require(
+            RulesEngine.load(fromYAMLData: Data(yaml.utf8)).rules.first
+        )
+        #expect(rule.classification == .weakening)
     }
 
     @Test(arguments: malformedRules) func malformedRulesFailWithLineNumber(yaml: String) {
@@ -198,6 +288,18 @@ import Testing
             severity: high
             reason: Unknown keys fail
             surprise: true
+            all:
+              - flag: runtime
+                present: true
+        """,
+        """
+        version: 2
+        weights: { low: 1, medium: 5, high: 15, critical: 40 }
+        rules:
+          - id: BAD_CLASS
+            severity: high
+            class: informational
+            reason: Bad class fails
             all:
               - flag: runtime
                 present: true
@@ -281,6 +383,7 @@ private struct RuleContext {
     var flags: Set<String> = []
     var notarization: String?
     var hasQuarantine: Bool? = false
+    var platformBinary = false
 
     mutating func apply(_ condition: RulesEngine.Condition) {
         switch condition {
@@ -298,6 +401,8 @@ private struct RuleContext {
             hasQuarantine = present
         case .notarization(let value):
             notarization = value
+        case .platformBinary(let present):
+            platformBinary = present
         case .any(let conditions):
             if let condition = conditions.first { apply(condition) }
         }

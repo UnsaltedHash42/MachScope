@@ -27,7 +27,8 @@ import Testing
         #expect(object["schema_version"] as? Int == 1)
         #expect(tool["name"] as? String == "machscope")
         #expect((scan["rules_digest"] as? String)?.hasPrefix("sha256:") == true)
-        #expect(object["records"] is [[String: Any]])
+        let records = try #require(object["records"] as? [[String: Any]])
+        #expect(records[0]["entitlements_der_only"] as? [String] == [])
     }
 
     @Test func recordsMatchGoldenFixture() throws {
@@ -41,9 +42,24 @@ import Testing
 
     private func fixtureRecords() -> [Record] {
         let findings = [
-            Finding(id: "CRITICAL", severity: .critical, reason: "Critical fixture"),
-            Finding(id: "LOW_ONE", severity: .low, reason: "First low fixture"),
-            Finding(id: "LOW_TWO", severity: .low, reason: "Second low fixture")
+            Finding(
+                id: "CRITICAL",
+                severity: .critical,
+                classification: .weakening,
+                reason: "Critical fixture"
+            ),
+            Finding(
+                id: "LOW_ONE",
+                severity: .low,
+                classification: .capability,
+                reason: "First low fixture"
+            ),
+            Finding(
+                id: "LOW_TWO",
+                severity: .low,
+                classification: .provenance,
+                reason: "Second low fixture"
+            )
         ]
         return [
             Record(path: "/fixtures/clean"),
@@ -70,12 +86,13 @@ import Testing
                     "string": .string("value"),
                     "unknown": .unknown
                 ],
+                entitlementsDerOnly: ["com.apple.private.security.storage.AppBundles"],
                 sandboxed: false,
                 developerType: "Developer ID",
                 hasQuarantineXattr: false,
                 certificateChain: [.init(subject: "Digest unavailable")],
                 findings: findings,
-                riskScore: 42
+                riskScore: 40
             )
         ]
     }

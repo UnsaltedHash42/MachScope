@@ -9,6 +9,9 @@
     "entitlements" : {
 
     },
+    "entitlements_der_only" : [
+
+    ],
     "errors" : [
 
     ],
@@ -59,21 +62,27 @@
         "unknown" : true
       }
     },
+    "entitlements_der_only" : [
+      "com.apple.private.security.storage.AppBundles"
+    ],
     "errors" : [
 
     ],
     "findings" : [
       {
+        "class" : "weakening",
         "id" : "CRITICAL",
         "reason" : "Critical fixture",
         "severity" : "critical"
       },
       {
+        "class" : "capability",
         "id" : "LOW_ONE",
         "reason" : "First low fixture",
         "severity" : "low"
       },
       {
+        "class" : "provenance",
         "id" : "LOW_TWO",
         "reason" : "Second low fixture",
         "severity" : "low"
@@ -85,7 +94,7 @@
     "path" : "\/fixtures\/risky",
     "platform_binary" : false,
     "risk_band" : "high",
-    "risk_score" : 42,
+    "risk_score" : 40,
     "sandboxed" : false,
     "signature_flags" : [
       "runtime"

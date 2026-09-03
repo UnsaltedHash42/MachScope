@@ -43,6 +43,7 @@ public struct Record: Codable, Sendable {
     public let format: String?
     public let notarization: String?
     public let entitlements: [String: EntitlementValue]
+    public let entitlementsDerOnly: [String]
     public let sandboxed: Bool?
     public let developerType: String?
     public let hasQuarantineXattr: Bool?
@@ -67,6 +68,7 @@ public struct Record: Codable, Sendable {
         case format
         case notarization
         case entitlements
+        case entitlementsDerOnly = "entitlements_der_only"
         case sandboxed
         case developerType = "developer_type"
         case hasQuarantineXattr = "has_quarantine_xattr"
@@ -92,6 +94,7 @@ public struct Record: Codable, Sendable {
         format: String? = nil,
         notarization: String? = nil,
         entitlements: [String: EntitlementValue] = [:],
+        entitlementsDerOnly: [String] = [],
         sandboxed: Bool? = nil,
         developerType: String? = nil,
         hasQuarantineXattr: Bool? = nil,
@@ -114,6 +117,7 @@ public struct Record: Codable, Sendable {
         self.format = format
         self.notarization = notarization
         self.entitlements = entitlements
+        self.entitlementsDerOnly = entitlementsDerOnly.sorted()
         self.sandboxed = sandboxed
         self.developerType = developerType
         self.hasQuarantineXattr = hasQuarantineXattr
@@ -124,5 +128,4 @@ public struct Record: Codable, Sendable {
         self.errors = errors
     }
 }
-
 

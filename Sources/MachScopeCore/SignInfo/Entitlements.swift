@@ -80,16 +80,45 @@ public enum EntitlementValue: Codable, Sendable, Equatable {
 
 public struct Entitlements: Sendable {
     public let values: [String: EntitlementValue]
+    public let derOnlyKeys: [String]
 
-    public init(values: [String: EntitlementValue] = [:]) {
+    public init(
+        values: [String: EntitlementValue] = [:],
+        derOnlyKeys: [String] = []
+    ) {
         self.values = values
+        self.derOnlyKeys = derOnlyKeys.sorted()
     }
 
     public static func fromSigningInfo(_ info: [String: Any]) -> Entitlements {
         guard let rawValues = info["entitlements-dict"] as? [String: Any] else {
             return Entitlements()
         }
-        return Entitlements(values: rawValues.mapValues(convert))
+        let derOnlyKeys: [String]
+        if info["entitlements-DER"] is Data,
+           let xmlKeys = xmlEntitlementKeys(from: info) {
+            derOnlyKeys = Set(rawValues.keys).subtracting(xmlKeys).sorted()
+        } else {
+            derOnlyKeys = []
+        }
+        return Entitlements(
+            values: rawValues.mapValues(convert),
+            derOnlyKeys: derOnlyKeys
+        )
+    }
+
+    private static func xmlEntitlementKeys(from info: [String: Any]) -> Set<String>? {
+        guard let data = info["entitlements"] as? Data else {
+            return []
+        }
+        guard let propertyList = try? PropertyListSerialization.propertyList(
+            from: data,
+            options: [],
+            format: nil
+        ), let dictionary = propertyList as? [String: Any] else {
+            return nil
+        }
+        return Set(dictionary.keys)
     }
 
     private static func convert(_ value: Any) -> EntitlementValue {
@@ -118,5 +147,4 @@ public struct Entitlements: Sendable {
         return .unknown
     }
 }
-
 
