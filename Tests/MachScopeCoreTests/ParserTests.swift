@@ -51,6 +51,60 @@ import Testing
         #expect(decoded == ents.values)
     }
 
+    @Test func entitlementUnionMarksDerOnlyKeysAndFeedsRules() throws {
+        let xml = try PropertyListSerialization.data(
+            fromPropertyList: [
+                "shared": true,
+                "xml-only": "value"
+            ],
+            format: .xml,
+            options: 0
+        )
+        let info: [String: Any] = [
+            "entitlements": xml,
+            "entitlements-DER": Data([0x01]),
+            "entitlements-dict": [
+                "shared": true,
+                "xml-only": "value",
+                "com.example.der-only": true
+            ]
+        ]
+        let entitlements = Entitlements.fromSigningInfo(info)
+        let engine = try RulesEngine.load(fromYAMLData: Data("""
+        version: 2
+        weights: { low: 1, medium: 5, high: 15, critical: 40 }
+        rules:
+          - id: DER_ONLY_MATCH
+            severity: high
+            class: weakening
+            reason: DER-only fixture matched
+            all:
+              - entitlement: com.example.der-only
+                is: true
+        """.utf8))
+        let findings = engine.evaluate(
+            entitlements: entitlements.values,
+            flags: [],
+            notarization: nil
+        )
+
+        #expect(entitlements.values.keys.sorted() == [
+            "com.example.der-only", "shared", "xml-only"
+        ])
+        #expect(entitlements.derOnlyKeys == ["com.example.der-only"])
+        #expect(findings.map(\.id) == ["DER_ONLY_MATCH"])
+    }
+
+    @Test func malformedXmlDoesNotMislabelUnionAsDerOnly() {
+        let info: [String: Any] = [
+            "entitlements": Data("not a plist".utf8),
+            "entitlements-DER": Data([0x01]),
+            "entitlements-dict": ["union-key": true]
+        ]
+
+        #expect(Entitlements.fromSigningInfo(info).derOnlyKeys.isEmpty)
+    }
+
     @Test func signatureFlagsDecodeKnownValues() {
         let info: [String: Any] = [
             "flags": NSNumber(value: UInt64(0x12a00))
@@ -95,5 +149,4 @@ import Testing
         #expect(MachOMagic().detectArchitectures(in: data).isEmpty)
     }
 }
-
 

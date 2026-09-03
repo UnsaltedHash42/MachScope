@@ -37,6 +37,7 @@ public struct RulesEngine: Sendable {
         case flag(String, present: Bool)
         case quarantine(present: Bool)
         case notarization(equals: String)
+        case platformBinary(Bool)
         case any([Condition])
     }
 
@@ -48,6 +49,7 @@ public struct RulesEngine: Sendable {
     public struct Rule: Sendable, Equatable {
         public let id: String
         public let severity: Finding.Severity
+        public let classification: Finding.Classification
         public let reason: String
         public let weight: Int
         public let mode: MatchMode
@@ -56,6 +58,7 @@ public struct RulesEngine: Sendable {
         public init(
             id: String,
             severity: Finding.Severity,
+            classification: Finding.Classification = .weakening,
             reason: String,
             weight: Int,
             mode: MatchMode,
@@ -63,6 +66,7 @@ public struct RulesEngine: Sendable {
         ) {
             self.id = id
             self.severity = severity
+            self.classification = classification
             self.reason = reason
             self.weight = weight
             self.mode = mode
@@ -116,7 +120,8 @@ public struct RulesEngine: Sendable {
         entitlements: [String: EntitlementValue],
         flags: [String],
         notarization: String?,
-        hasQuarantine: Bool? = nil
+        hasQuarantine: Bool? = nil,
+        platformBinary: Bool = false
     ) -> [Finding] {
         if entitlements.isEmpty && flags.isEmpty && notarization == nil && hasQuarantine == nil {
             return []
@@ -126,7 +131,8 @@ public struct RulesEngine: Sendable {
             entitlements: entitlements,
             flags: Set(flags),
             notarization: notarization,
-            hasQuarantine: hasQuarantine
+            hasQuarantine: hasQuarantine,
+            platformBinary: platformBinary
         )
         return rules.compactMap { rule in
             let matches: Bool
@@ -137,14 +143,19 @@ public struct RulesEngine: Sendable {
                 matches = rule.conditions.contains { $0.matches(context) }
             }
             return matches
-                ? Finding(id: rule.id, severity: rule.severity, reason: rule.reason)
+                ? Finding(
+                    id: rule.id,
+                    severity: rule.severity,
+                    classification: rule.classification,
+                    reason: rule.reason
+                )
                 : nil
         }
     }
 
     public func riskScore(for findings: [Finding]) -> Int {
         var score = 0
-        for finding in findings {
+        for finding in findings where finding.classification == .weakening {
             let weight = ruleWeights[finding.id] ?? weights.value(for: finding.severity)
             if weight >= 100 - score {
                 return 100
@@ -205,6 +216,7 @@ private struct EvaluationContext {
     let flags: Set<String>
     let notarization: String?
     let hasQuarantine: Bool?
+    let platformBinary: Bool
 }
 
 private extension RulesEngine.Condition {
@@ -229,6 +241,8 @@ private extension RulesEngine.Condition {
             return context.hasQuarantine == expected
         case .notarization(let expected):
             return context.notarization?.lowercased() == expected.lowercased()
+        case .platformBinary(let expected):
+            return context.platformBinary == expected
         case .any(let conditions):
             return conditions.contains { $0.matches(context) }
         }
@@ -249,6 +263,8 @@ private extension RulesEngine.Condition {
             return "quarantine present \(present)"
         case .notarization(let value):
             return "notarization equals \(value)"
+        case .platformBinary(let value):
+            return "platform binary is \(value)"
         case .any(let conditions):
             return "any (\(conditions.map(\.summary).joined(separator: " or ")))"
         }
@@ -360,6 +376,7 @@ private struct Parser {
         }
 
         var severity: Finding.Severity?
+        var classification: Finding.Classification?
         var reason: String?
         var weightOverride: Int?
         var mode: RulesEngine.MatchMode?
@@ -378,6 +395,15 @@ private struct Parser {
                     throw error(at: line, expected: "severity: low|medium|high|critical")
                 }
                 severity = value
+                index += 1
+            } else if line.text.hasPrefix("class: ") {
+                guard classification == nil,
+                      let value = Finding.Classification(
+                        rawValue: String(line.text.dropFirst(7))
+                      ) else {
+                    throw error(at: line, expected: "class: weakening|capability|provenance")
+                }
+                classification = value
                 index += 1
             } else if line.text.hasPrefix("reason: ") {
                 guard reason == nil else {
@@ -409,7 +435,7 @@ private struct Parser {
                 mode = parsedMode
                 conditions = parsedConditions
             } else {
-                throw error(at: line, expected: "severity, reason, weight, all, or any")
+                throw error(at: line, expected: "severity, class, reason, weight, all, or any")
             }
         }
 
@@ -428,6 +454,7 @@ private struct Parser {
         return RulesEngine.Rule(
             id: id,
             severity: severity,
+            classification: classification ?? .weakening,
             reason: reason,
             weight: weightOverride ?? weights.value(for: severity),
             mode: mode,
@@ -468,6 +495,13 @@ private struct Parser {
             let key = parts[0]
             let value = parts[1].trimmingCharacters(in: .whitespaces)
             index += 1
+            if key == "platform_binary" {
+                guard !value.isEmpty else {
+                    throw error(at: line, expected: "platform_binary: true|false")
+                }
+                conditions.append(.platformBinary(try parseBool(value, at: line)))
+                continue
+            }
             guard index < lines.count else {
                 throw RulesEngine.ParseError(line: line.number, message: "expected a condition comparator")
             }
@@ -519,7 +553,10 @@ private struct Parser {
                 }
                 condition = .notarization(equals: expected)
             default:
-                throw error(at: line, expected: "entitlement, flag, quarantine, notarization, or any")
+                throw error(
+                    at: line,
+                    expected: "entitlement, flag, quarantine, notarization, platform_binary, or any"
+                )
             }
             conditions.append(condition)
             index += 1

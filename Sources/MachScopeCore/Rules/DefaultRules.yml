@@ -3,12 +3,14 @@ weights: { low: 1, medium: 5, high: 15, critical: 40 }
 rules:
   - id: GET_TASK_ALLOW
     severity: critical
+    class: weakening
     reason: Debugger attachment permitted in production context
     all:
       - entitlement: com.apple.security.get-task-allow
         is: true
   - id: GTA_NO_HARDENED
     severity: critical
+    class: weakening
     reason: Debugger allowed without Hardened Runtime
     all:
       - entitlement: com.apple.security.get-task-allow
@@ -17,30 +19,35 @@ rules:
         present: false
   - id: DLV
     severity: high
+    class: weakening
     reason: Disable Library Validation allows dylib injection
     all:
       - entitlement: com.apple.security.cs.disable-library-validation
         is: true
   - id: DYLD_ENV
     severity: high
+    class: weakening
     reason: Allows manipulation via DYLD_* environment variables
     all:
       - entitlement: com.apple.security.cs.allow-dyld-environment-variables
         is: true
   - id: UNSIGNED_EXEC_MEM
     severity: high
+    class: weakening
     reason: Allows creation of unsigned executable memory (code injection risk)
     all:
       - entitlement: com.apple.security.cs.allow-unsigned-executable-memory
         is: true
   - id: ALLOW_JIT
     severity: high
+    class: weakening
     reason: JIT execution enabled
     all:
       - entitlement: com.apple.security.cs.allow-jit
         is: true
   - id: JIT_AND_NETWORK
     severity: high
+    class: weakening
     reason: JIT combined with network entitlements increases risk
     all:
       - entitlement: com.apple.security.cs.allow-jit
@@ -52,102 +59,120 @@ rules:
             is: true
   - id: FILES_ALL
     severity: high
+    class: weakening
     reason: Full file system access via sandbox exception
     all:
       - entitlement: com.apple.security.files.all
         is: true
   - id: NOTARIZATION_REJECTED
     severity: high
+    class: weakening
     reason: Gatekeeper assessment was rejected
     all:
       - notarization:
         equals: rejected
   - id: NO_HARDENED_RUNTIME
     severity: medium
+    class: weakening
     reason: Hardened Runtime not enabled
     all:
       - flag: runtime
         present: false
+      - platform_binary: false
   - id: ADHOC_SIGNING
     severity: medium
+    class: weakening
     reason: Adhoc signature (no trusted signer)
     all:
       - flag: adhoc
         present: true
   - id: APPLE_EVENTS
     severity: medium
+    class: capability
     reason: Can control other apps via Apple Events (automation)
     all:
       - entitlement: com.apple.security.automation.apple-events
         is: true
   - id: DEVICE_CAMERA
     severity: medium
+    class: capability
     reason: Access to camera device
     all:
       - entitlement: com.apple.security.device.camera
         is: true
   - id: DEVICE_MICROPHONE
     severity: medium
+    class: capability
     reason: Access to microphone device
     all:
       - entitlement: com.apple.security.device.microphone
         is: true
   - id: PII_ADDRESSBOOK
     severity: medium
+    class: capability
     reason: Access to contacts/address book
     all:
       - entitlement: com.apple.security.personal-information.addressbook
         is: true
   - id: PII_CALENDARS
     severity: medium
+    class: capability
     reason: Access to calendars
     all:
       - entitlement: com.apple.security.personal-information.calendars
         is: true
   - id: PII_LOCATION
     severity: medium
+    class: capability
     reason: Access to location information
     all:
       - entitlement: com.apple.security.personal-information.location
         is: true
   - id: PII_PHOTOS
     severity: medium
+    class: capability
     reason: Access to Photos library
     all:
       - entitlement: com.apple.security.personal-information.photos-library
         is: true
   - id: FILES_DOWNLOADS_RW
     severity: medium
+    class: capability
     reason: Read/Write access to Downloads folder
     all:
       - entitlement: com.apple.security.files.downloads.read-write
         is: true
   - id: NETWORK_CLIENT
     severity: low
+    class: capability
     reason: Has network client entitlement
     all:
       - entitlement: com.apple.security.network.client
         is: true
   - id: NETWORK_SERVER
     severity: low
+    class: capability
     reason: Has network server entitlement
     all:
       - entitlement: com.apple.security.network.server
         is: true
   - id: FILES_USER_SELECTED_RW
     severity: low
+    class: capability
     reason: User-selected read/write file access
     all:
       - entitlement: com.apple.security.files.user-selected.read-write
         is: true
   - id: PRINT
     severity: low
+    class: capability
     reason: Printing capability enabled
     all:
       - entitlement: com.apple.security.print
         is: true
   - id: QUARANTINE_PRESENT
     severity: low
+    class: provenance
     reason: Quarantine extended attribute present
     all:
       - quarantine:

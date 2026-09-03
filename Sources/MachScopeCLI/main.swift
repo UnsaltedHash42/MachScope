@@ -229,7 +229,10 @@ func runScan(path: String, config: CLIConfig) throws -> Int32 {
     guard let threshold = config.failOn else { return 0 }
     let thresholdRank = severityRank(threshold)
     return records.contains { record in
-        record.findings.contains { severityRank($0.severity) >= thresholdRank }
+        record.findings.contains {
+            $0.classification == .weakening
+                && severityRank($0.severity) >= thresholdRank
+        }
     } ? 1 : 0
 }
 

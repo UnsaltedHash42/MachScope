@@ -23,7 +23,7 @@ import Testing
         #expect(result.stderr.contains("--bogus-flag"))
     }
 
-    @Test func failOnThresholdControlsExitCode() throws {
+    @Test func weakeningFindingAtThresholdControlsExitCode() throws {
         let fixture = try makeFixture()
         defer { try? FileManager.default.removeItem(at: fixture.root) }
         let highRules = fixture.root.appendingPathComponent("high.yml")
@@ -49,6 +49,31 @@ import Testing
         #expect(high.status == 1)
         #expect(low.status == 0)
         #expect(defaultExit.status == 0)
+    }
+
+    @Test(arguments: ["capability", "provenance"])
+    func nonWeakeningFindingsNeverTripFailOn(classification: String) throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let rulesFile = fixture.root.appendingPathComponent("\(classification).yml")
+
+        for severity in ["low", "medium", "high", "critical"] {
+            try rules(severity: severity, classification: classification)
+                .write(to: rulesFile, atomically: true, encoding: .utf8)
+            let result = try runCLI([
+                "scan", fixture.binary.path,
+                "--rules", rulesFile.path,
+                "--fail-on", "low"
+            ])
+            let object = try jsonObject(result.stdout)
+            let records = try #require(object["records"] as? [[String: Any]])
+            let findings = try #require(records.first?["findings"] as? [[String: Any]])
+
+            #expect(result.status == 0)
+            #expect(records.first?["risk_score"] as? Int == 0)
+            #expect(findings.first?["class"] as? String == classification)
+            #expect(findings.first?["severity"] as? String == severity)
+        }
     }
 
     @Test func nonexistentRootExitsThree() throws {
@@ -145,13 +170,14 @@ import Testing
         return try JSONSerialization.data(withJSONObject: records, options: [.sortedKeys])
     }
 
-    private func rules(severity: String) -> String {
+    private func rules(severity: String, classification: String = "weakening") -> String {
         """
         version: 2
         weights: { low: 1, medium: 5, high: 15, critical: 40 }
         rules:
           - id: TEST_FINDING
             severity: \(severity)
+            class: \(classification)
             reason: Test finding
             all:
               - flag: absent-test-flag
